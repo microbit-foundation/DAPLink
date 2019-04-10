@@ -1,0 +1,108 @@
+From 28a6acc01e8904dce2247431104c2b64eddb1e9b Mon Sep 17 00:00:00 2001
+From: Russ Butler <russ.butler@arm.com>
+Date: Thu, 4 Feb 2016 23:27:39 -0600
+Subject: [PATCH] Remove use of __inline for C99 compatibility
+
+Keil 5.16 changed how __inline is implemented in C99 to more closely
+match that of the C specification.  The introduced undefined function
+errors in usbd_core.c.  This patch fixes that by replacing the use of
+"__inline" with "static inline".
+
+More info on this can be found here:
+http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.faqs/ka15831.html
+
+Taken from the above link:
+
+$ armcc test.c -o test.axf -O0 --c99
+  Error: L6218E: Undefined symbol inc (referred from test.o).
+This error is expected and caused by the special C99 specification for
+the inline keyword. When building for C90 (using __inline keyword
+instead of inline) or C++, no error appears. In C99, a function that
+is marked with inline is an inline function.  An inline function in C99
+has an inline definition. An external definition (out-of-line copy of
+the function definition) is never generated. Whereas in C90 and C++
+an external definition of the function is generated.
+
+To use inline in C99 properly, it is recommended to specify the
+function with static inline, or put the definition of the function info
+a header file and specify it with extern inline.
+---
+ source/usb/usbd_core.c | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/source/usb/usbd_core.c b/source/usb/usbd_core.c
+index c012fee1d..5d347a1b7 100644
+--- a/source/usb/usbd_core.c
++++ b/source/usb/usbd_core.c
+@@ -184,7 +184,7 @@ void USBD_StatusOutStage (void) {
+  *    Return Value:    TRUE - Success, FALSE - Error
+  */
+ 
+-__inline BOOL USBD_ReqGetStatus (void) {
++static inline BOOL USBD_ReqGetStatus (void) {
+   U32 n, m;
+ 
+   switch (USBD_SetupPacket.bmRequestType.Recipient) {
+@@ -222,7 +222,7 @@ __inline BOOL USBD_ReqGetStatus (void) {
+  *    Return Value:    TRUE - Success, FALSE - Error
+  */
+ 
+-__inline BOOL USBD_ReqSetClrFeature (U32 sc) {
++static inline BOOL USBD_ReqSetClrFeature (U32 sc) {
+   U32 n, m;
+ 
+   switch (USBD_SetupPacket.bmRequestType.Recipient) {
+@@ -277,7 +277,7 @@ __inline BOOL USBD_ReqSetClrFeature (U32 sc) {
+  *    Return Value:    TRUE - Success, FALSE - Error
+  */
+ 
+-__inline BOOL USBD_ReqSetAddress (void) {
++static inline BOOL USBD_ReqSetAddress (void) {
+ 
+   switch (USBD_SetupPacket.bmRequestType.Recipient) {
+     case REQUEST_TO_DEVICE:
+@@ -296,7 +296,7 @@ __inline BOOL USBD_ReqSetAddress (void) {
+  *    Return Value:    TRUE - Success, FALSE - Error
+  */
+ 
+-__inline BOOL USBD_ReqGetDescriptor (void) {
++static inline BOOL USBD_ReqGetDescriptor (void) {
+   U8  *pD;
+   U32  len, n;
+ 
+@@ -406,7 +406,7 @@ __inline BOOL USBD_ReqGetDescriptor (void) {
+  *    Return Value:    TRUE - Success, FALSE - Error
+  */
+ 
+-__inline BOOL USBD_ReqGetConfiguration (void) {
++static inline BOOL USBD_ReqGetConfiguration (void) {
+ 
+   switch (USBD_SetupPacket.bmRequestType.Recipient) {
+     case REQUEST_TO_DEVICE:
+@@ -425,7 +425,7 @@ __inline BOOL USBD_ReqGetConfiguration (void) {
+  *    Return Value:    TRUE - Success, FALSE - Error
+  */
+ 
+-__inline BOOL USBD_ReqSetConfiguration (void) {
++static inline BOOL USBD_ReqSetConfiguration (void) {
+   USB_CONFIGURATION_DESCRIPTOR *pD;
+   U32                           alt = 0;
+   U32                           n, m;
+@@ -523,7 +523,7 @@ __inline BOOL USBD_ReqSetConfiguration (void) {
+  *    Return Value:    TRUE - Success, FALSE - Error
+  */
+ 
+-__inline BOOL USBD_ReqGetInterface (void) {
++static inline BOOL USBD_ReqGetInterface (void) {
+ 
+   switch (USBD_SetupPacket.bmRequestType.Recipient) {
+     case REQUEST_TO_INTERFACE:
+@@ -546,7 +546,7 @@ __inline BOOL USBD_ReqGetInterface (void) {
+  *    Return Value:    TRUE - Success, FALSE - Error
+  */
+ 
+-__inline BOOL USBD_ReqSetInterface (void) {
++static inline BOOL USBD_ReqSetInterface (void) {
+   USB_COMMON_DESCRIPTOR *pD;
+   U32                    ifn = 0, alt = 0, old = 0, msk = 0;
+   U32                    n, m;

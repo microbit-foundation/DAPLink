@@ -188,7 +188,7 @@ void USBD_StatusOutStage (void) {
  *    Return Value:    TRUE - Success, FALSE - Error
  */
 
-__inline BOOL USBD_ReqGetStatus (void) {
+static inline BOOL USBD_ReqGetStatus (void) {
   U32 n, m;
 
   switch (USBD_SetupPacket.bmRequestType.Recipient) {
@@ -226,7 +226,7 @@ __inline BOOL USBD_ReqGetStatus (void) {
  *    Return Value:    TRUE - Success, FALSE - Error
  */
 
-__inline BOOL USBD_ReqSetClrFeature (U32 sc) {
+static inline BOOL USBD_ReqSetClrFeature (U32 sc) {
   U32 n, m;
 
   switch (USBD_SetupPacket.bmRequestType.Recipient) {
@@ -281,7 +281,7 @@ __inline BOOL USBD_ReqSetClrFeature (U32 sc) {
  *    Return Value:    TRUE - Success, FALSE - Error
  */
 
-__inline BOOL USBD_ReqSetAddress (void) {
+static inline BOOL USBD_ReqSetAddress (void) {
 
   switch (USBD_SetupPacket.bmRequestType.Recipient) {
     case REQUEST_TO_DEVICE:
@@ -300,7 +300,7 @@ __inline BOOL USBD_ReqSetAddress (void) {
  *    Return Value:    TRUE - Success, FALSE - Error
  */
 
-__inline BOOL USBD_ReqGetDescriptor (void) {
+static inline BOOL USBD_ReqGetDescriptor (void) {
   U8  *pD;
   U32  len, n;
 
@@ -410,7 +410,7 @@ __inline BOOL USBD_ReqGetDescriptor (void) {
  *    Return Value:    TRUE - Success, FALSE - Error
  */
 
-__inline BOOL USBD_ReqGetConfiguration (void) {
+static inline BOOL USBD_ReqGetConfiguration (void) {
 
   switch (USBD_SetupPacket.bmRequestType.Recipient) {
     case REQUEST_TO_DEVICE:
@@ -429,7 +429,7 @@ __inline BOOL USBD_ReqGetConfiguration (void) {
  *    Return Value:    TRUE - Success, FALSE - Error
  */
 
-__inline BOOL USBD_ReqSetConfiguration (void) {
+static inline BOOL USBD_ReqSetConfiguration (void) {
   USB_CONFIGURATION_DESCRIPTOR *pD;
   U32                           alt = 0;
   U32                           n, m;
@@ -527,7 +527,7 @@ __inline BOOL USBD_ReqSetConfiguration (void) {
  *    Return Value:    TRUE - Success, FALSE - Error
  */
 
-__inline BOOL USBD_ReqGetInterface (void) {
+static inline BOOL USBD_ReqGetInterface (void) {
 
   switch (USBD_SetupPacket.bmRequestType.Recipient) {
     case REQUEST_TO_INTERFACE:
@@ -550,7 +550,7 @@ __inline BOOL USBD_ReqGetInterface (void) {
  *    Return Value:    TRUE - Success, FALSE - Error
  */
 
-__inline BOOL USBD_ReqSetInterface (void) {
+static inline BOOL USBD_ReqSetInterface (void) {
   USB_COMMON_DESCRIPTOR *pD;
   U32                    ifn = 0, alt = 0, old = 0, msk = 0;
   U32                    n, m;
