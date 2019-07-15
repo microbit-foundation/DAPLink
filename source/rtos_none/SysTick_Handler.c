@@ -27,6 +27,8 @@
 #include "MK26F18.h"
 #elif defined (INTERFACE_KL26Z)
 #include "MKL26Z4.h"
+#elif defined (INTERFACE_KL27Z)
+#include "MKL27Z4.h"
 #elif defined (INTERFACE_LPC11U35)
 #include "LPC11Uxx.h"
 #elif defined (INTERFACE_LPC4322)
