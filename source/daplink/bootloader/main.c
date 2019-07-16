@@ -21,6 +21,7 @@
 
 #include "main.h"
 #include "gpio.h"
+#include "pwr_mon.h"
 #include "validation.h"
 #include "vfs_manager.h"
 #include "cmsis_os2.h"
@@ -233,10 +234,14 @@ int main(void)
     gpio_init();
     // init settings
     config_init();
+    // init power monitoring
+    pwr_mon_init();
+
+    bool battery_powered = pwr_mon_battery_powered();
 
     // check for invalid app image or rst button press. Should be checksum or CRC but NVIC validation is better than nothing.
     // If the interface has set the hold in bootloader setting don't jump to app
-    if (!gpio_get_reset_btn() && g_board_info.target_cfg && validate_bin_nvic((uint8_t *)g_board_info.target_cfg->flash_regions[0].start) && !config_ram_get_initial_hold_in_bl()) {
+    if ((!gpio_get_reset_btn() || battery_powered) && g_board_info.target_cfg && validate_bin_nvic((uint8_t *)g_board_info.target_cfg->flash_regions[0].start) && !config_ram_get_initial_hold_in_bl()) {
         // change to the new vector table
         SCB->VTOR = g_board_info.target_cfg->flash_regions[0].start; //bootloaders should only have one flash region for interface
         // modify stack pointer and start app
