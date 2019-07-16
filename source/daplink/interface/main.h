@@ -45,6 +45,14 @@ typedef enum main_usb_connect {
     USB_DISCONNECTING
 } main_usb_connect_t;
 
+typedef enum main_shutdown_state {
+    MAIN_SHUTDOWN_WAITING = 0,
+    MAIN_SHUTDOWN_PENDING,
+    MAIN_SHUTDOWN_REACHED,
+    MAIN_SHUTDOWN_REQUESTED,
+    MAIN_SHUTDOWN_CANCEL
+} main_shutdown_state_t;
+
 void main_reset_target(uint8_t send_unique_id);
 void main_usb_set_test_mode(bool enabled);
 void main_usb_configure_event(void);

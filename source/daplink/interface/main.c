@@ -28,6 +28,7 @@
 #include "main.h"
 #include "board.h"
 #include "gpio.h"
+#include "pwm.h"
 #include "uart.h"
 #include "tasks.h"
 #include "target_reset.h"
@@ -190,6 +191,7 @@ void main_task(void * arg)
     gpio_led_state_t hid_led_value = HID_LED_DEF;
     gpio_led_state_t cdc_led_value = CDC_LED_DEF;
     gpio_led_state_t msc_led_value = MSC_LED_DEF;
+    uint8_t shutdown_led_dc = 100;
     // USB
     uint32_t usb_state_count = USB_BUSY_TIME;
     uint32_t usb_no_config_count = USB_CONFIGURE_TIMEOUT;
@@ -198,6 +200,10 @@ void main_task(void * arg)
 #ifdef PBON_BUTTON
     uint8_t power_on = 1;
 #endif
+    // reset button state count
+    uint8_t gpio_reset_count = 0;
+    // shutdown state
+    main_shutdown_state_t main_shutdown_state = MAIN_SHUTDOWN_WAITING;
 
     // Initialize settings - required for asserts to work
     config_init();
@@ -207,10 +213,14 @@ void main_task(void * arg)
     main_task_id = osThreadGetId();
     // leds
     gpio_init();
+    pwm_init();
+    pwm_init_pins();
     // Turn to LED default settings
     gpio_set_hid_led(hid_led_value);
     gpio_set_cdc_led(cdc_led_value);
     gpio_set_msc_led(msc_led_value);
+    // Turn on the red LED
+    pwm_set_dutycycle(100);
     // Initialize the DAP
     DAP_Setup();
 
@@ -311,6 +321,8 @@ void main_task(void * arg)
                     // Disable board power before USB is disconnected.
                     gpio_set_board_power(false);
                     usbd_connect(0);
+                    // In most cases this is fine since power is gone, where battery remains, go into low power mode
+                    main_powerdown_event();
                     break;
 
                 case USB_CONNECTING:
@@ -357,13 +369,40 @@ void main_task(void * arg)
 #endif
                 {
                     // Reset button pressed
-                    target_set_state(RESET_HOLD);
+//                    target_set_state(RESET_HOLD);
                     reset_pressed = 1;
+                    gpio_reset_count = 0;
                 }
             } else if (reset_pressed && !gpio_get_reset_btn_fwrd()) {
                 // Reset button released
-                target_set_state(RESET_RUN);
                 reset_pressed = 0;
+                
+                if (gpio_reset_count <= RESET_SHORT_PRESS) {
+                    target_set_state(RESET_RUN);
+                }
+                else if (gpio_reset_count < RESET_LONG_PRESS) {
+                    // Indicate button has been released to stop to cancel the shutdown
+                    main_shutdown_state = MAIN_SHUTDOWN_CANCEL;
+                }
+                else if (gpio_reset_count >= RESET_LONG_PRESS) {
+                    // Indicate the button has been released when shutdown is requested
+                    main_shutdown_state = MAIN_SHUTDOWN_REQUESTED;
+                }
+            } else if (reset_pressed && gpio_get_reset_btn_fwrd()) {
+                // Reset button is still pressed
+                if (gpio_reset_count > RESET_SHORT_PRESS && gpio_reset_count < RESET_LONG_PRESS) {
+                    // Enter the shutdown pending state to begin LED dimming
+                    main_shutdown_state = MAIN_SHUTDOWN_PENDING;
+                }
+                else if (gpio_reset_count >= RESET_LONG_PRESS) {
+                    // Enter the shutdown reached state to blink LED
+                    main_shutdown_state = MAIN_SHUTDOWN_REACHED;
+                }
+                
+                // Avoid overflow, stop counting after longest event
+                if (gpio_reset_count <= RESET_MAX_LENGTH_PRESS) {
+                    gpio_reset_count++;
+                }
             }
 
 #ifdef PBON_BUTTON
@@ -388,6 +427,45 @@ void main_task(void * arg)
                 }
             }
 #endif
+            
+            // need to define battery powered and set it someplace
+            if (1) {
+                switch (main_shutdown_state) {
+                    case MAIN_SHUTDOWN_CANCEL:
+                        main_shutdown_state = MAIN_SHUTDOWN_WAITING;
+                        // Set the PWM value back to 100%
+                        shutdown_led_dc = 100;
+                        break;
+                    case MAIN_SHUTDOWN_PENDING:
+                        // Fade the PWM until the board is about to be shut down
+                        if (shutdown_led_dc > 0) {
+                            shutdown_led_dc--;
+                        }
+                        break;
+                    case MAIN_SHUTDOWN_REACHED:
+                        // Blink the LED to indicate we are waiting for release
+                        if (shutdown_led_dc < 10) {
+                            shutdown_led_dc++;
+                        } else if (shutdown_led_dc == 10) {
+                            shutdown_led_dc = 100;
+                        } else if (shutdown_led_dc <= 90) {
+                            shutdown_led_dc = 0;
+                        } else if (shutdown_led_dc > 90) {
+                            shutdown_led_dc--;
+                        }
+                        break;
+                    case MAIN_SHUTDOWN_REQUESTED:
+                        // Drive LOAD_DUMP and KILLME
+                        gpio_set_loaddump(GPIO_ON);
+                        gpio_set_killme(GPIO_ON);
+                        main_shutdown_state = MAIN_SHUTDOWN_WAITING;
+                        break;
+                    case MAIN_SHUTDOWN_WAITING:
+                    default:
+                        break;
+                }
+                pwm_set_dutycycle(shutdown_led_dc);
+            }
 
             // DAP LED
             if (hid_led_usb_activity) {
