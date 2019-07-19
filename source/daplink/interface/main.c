@@ -28,7 +28,6 @@
 #include "main.h"
 #include "board.h"
 #include "gpio.h"
-#include "pwm.h"
 #include "uart.h"
 #include "tasks.h"
 #include "target_reset.h"
@@ -107,6 +106,18 @@ static main_led_state_t msc_led_state = MAIN_LED_FLASH;
 // Global state of usb
 main_usb_connect_t usb_state;
 static bool usb_test_mode = false;
+
+typedef enum main_shutdown_state {
+    MAIN_SHUTDOWN_WAITING = 0,
+    MAIN_SHUTDOWN_PENDING,
+    MAIN_SHUTDOWN_REACHED,
+    MAIN_SHUTDOWN_REQUESTED,
+    MAIN_SHUTDOWN_CANCEL
+} main_shutdown_state_t;
+
+extern main_shutdown_state_t main_shutdown_state;
+
+__attribute__((weak)) void board_30ms_hook(void) {}
 
 // Timer task, set flags every 30mS and 90mS
 void timer_task_30mS(void * arg)
@@ -191,7 +202,6 @@ void main_task(void * arg)
     gpio_led_state_t hid_led_value = HID_LED_DEF;
     gpio_led_state_t cdc_led_value = CDC_LED_DEF;
     gpio_led_state_t msc_led_value = MSC_LED_DEF;
-    uint8_t shutdown_led_dc = 100;
     // USB
     uint32_t usb_state_count = USB_BUSY_TIME;
     uint32_t usb_no_config_count = USB_CONFIGURE_TIMEOUT;
@@ -202,8 +212,6 @@ void main_task(void * arg)
 #endif
     // reset button state count
     uint8_t gpio_reset_count = 0;
-    // shutdown state
-    main_shutdown_state_t main_shutdown_state = MAIN_SHUTDOWN_WAITING;
 
     // Initialize settings - required for asserts to work
     config_init();
@@ -213,14 +221,10 @@ void main_task(void * arg)
     main_task_id = osThreadGetId();
     // leds
     gpio_init();
-    pwm_init();
-    pwm_init_pins();
     // Turn to LED default settings
     gpio_set_hid_led(hid_led_value);
     gpio_set_cdc_led(cdc_led_value);
     gpio_set_msc_led(msc_led_value);
-    // Turn on the red LED
-    pwm_set_dutycycle(100);
     // Initialize the DAP
     DAP_Setup();
 
@@ -427,45 +431,8 @@ void main_task(void * arg)
                 }
             }
 #endif
-            
-            // need to define battery powered and set it someplace
-            if (1) {
-                switch (main_shutdown_state) {
-                    case MAIN_SHUTDOWN_CANCEL:
-                        main_shutdown_state = MAIN_SHUTDOWN_WAITING;
-                        // Set the PWM value back to 100%
-                        shutdown_led_dc = 100;
-                        break;
-                    case MAIN_SHUTDOWN_PENDING:
-                        // Fade the PWM until the board is about to be shut down
-                        if (shutdown_led_dc > 0) {
-                            shutdown_led_dc--;
-                        }
-                        break;
-                    case MAIN_SHUTDOWN_REACHED:
-                        // Blink the LED to indicate we are waiting for release
-                        if (shutdown_led_dc < 10) {
-                            shutdown_led_dc++;
-                        } else if (shutdown_led_dc == 10) {
-                            shutdown_led_dc = 100;
-                        } else if (shutdown_led_dc <= 90) {
-                            shutdown_led_dc = 0;
-                        } else if (shutdown_led_dc > 90) {
-                            shutdown_led_dc--;
-                        }
-                        break;
-                    case MAIN_SHUTDOWN_REQUESTED:
-                        // Drive LOAD_DUMP and KILLME
-                        gpio_set_loaddump(GPIO_ON);
-                        gpio_set_killme(GPIO_ON);
-                        main_shutdown_state = MAIN_SHUTDOWN_WAITING;
-                        break;
-                    case MAIN_SHUTDOWN_WAITING:
-                    default:
-                        break;
-                }
-                pwm_set_dutycycle(shutdown_led_dc);
-            }
+            // 30ms event hook function
+            board_30ms_hook();
 
             // DAP LED
             if (hid_led_usb_activity) {
