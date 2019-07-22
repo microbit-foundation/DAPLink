@@ -333,8 +333,6 @@ void main_task(void * arg)
                     // Disable board power before USB is disconnected.
                     gpio_set_board_power(false);
                     usbd_connect(0);
-                    // In most cases this is fine since power is gone, where battery remains, go into low power mode
-                    main_powerdown_event();
                     break;
 
                 case USB_CONNECTING:
