@@ -1,5 +1,5 @@
 /**
- * @file    microbit.c
+ * @file    microbitv2.c
  * @brief   board ID for the BBC Microbit board
  *
  * DAPLink Interface Firmware
@@ -23,18 +23,136 @@
 #include "DAP.h"
 #include "target_family.h"
 #include "target_board.h"
+#include "pwm.h"
+#include "gpio.h"
+
+#ifdef DRAG_N_DROP_SUPPORT
+#include "flash_intf.h"
+#endif
 
 const char * const board_id_mb_2_0 = "9902";
 
 extern target_cfg_t target_device_nrf52;
 
+typedef enum main_shutdown_state {
+    MAIN_SHUTDOWN_WAITING = 0,
+    MAIN_SHUTDOWN_PENDING,
+    MAIN_SHUTDOWN_REACHED,
+    MAIN_SHUTDOWN_REQUESTED,
+    MAIN_SHUTDOWN_CANCEL
+} main_shutdown_state_t;
+
+// shutdown state
+static main_shutdown_state_t main_shutdown_state = MAIN_SHUTDOWN_WAITING;
+static uint8_t shutdown_led_dc = 100;
+
 // Called in main_task() to init before USB and files are configured
-static void prerun_board_config(void) {
+static void prerun_board_config(void)
+{
     target_device = target_device_nrf52;
     target_device.rt_board_id = board_id_mb_2_0;
+
+    pwm_init();
+    pwm_init_pins();
+
+    // Turn on the red LED
+    pwm_set_dutycycle(100);
 }
 
-// USB HID override function return 1 if the activity is trivial or response is null 
+// Handle the reset button behavior, this function is called in the main task every 30ms
+void handle_reset_button()
+{
+	// button state
+    static uint8_t reset_pressed = 0;
+    // reset button state count
+    static uint8_t gpio_reset_count = 0;
+
+    // handle reset button without eventing
+    if (!reset_pressed && gpio_get_reset_btn_fwrd()) {
+#ifdef DRAG_N_DROP_SUPPORT
+        if (!flash_intf_target->flash_busy()) //added checking if flashing on target is in progress
+#endif
+        {
+            // Reset button pressed
+            reset_pressed = 1;
+            gpio_reset_count = 0;
+        }
+    } else if (reset_pressed && !gpio_get_reset_btn_fwrd()) {
+        // Reset button released
+        reset_pressed = 0;
+
+        if (gpio_reset_count <= RESET_SHORT_PRESS) {
+            target_set_state(RESET_RUN);
+        }
+        else if (gpio_reset_count < RESET_LONG_PRESS) {
+            // Indicate button has been released to stop to cancel the shutdown
+            main_shutdown_state = MAIN_SHUTDOWN_CANCEL;
+        }
+        else if (gpio_reset_count >= RESET_LONG_PRESS) {
+            // Indicate the button has been released when shutdown is requested
+            main_shutdown_state = MAIN_SHUTDOWN_REQUESTED;
+        }
+    } else if (reset_pressed && gpio_get_reset_btn_fwrd()) {
+        // Reset button is still pressed
+        if (gpio_reset_count > RESET_SHORT_PRESS && gpio_reset_count < RESET_LONG_PRESS) {
+            // Enter the shutdown pending state to begin LED dimming
+            main_shutdown_state = MAIN_SHUTDOWN_PENDING;
+        }
+        else if (gpio_reset_count >= RESET_LONG_PRESS) {
+            // Enter the shutdown reached state to blink LED
+            main_shutdown_state = MAIN_SHUTDOWN_REACHED;
+        }
+
+        // Avoid overflow, stop counting after longest event
+        if (gpio_reset_count <= RESET_MAX_LENGTH_PRESS) {
+            gpio_reset_count++;
+        }
+    }
+}
+
+void board_30ms_hook()
+{
+    // need to define battery powered and set it someplace
+    if (1) {
+        switch (main_shutdown_state) {
+        case MAIN_SHUTDOWN_CANCEL:
+            main_shutdown_state = MAIN_SHUTDOWN_WAITING;
+            // Set the PWM value back to 100%
+            shutdown_led_dc = 100;
+            break;
+        case MAIN_SHUTDOWN_PENDING:
+            // Fade the PWM until the board is about to be shut down
+            if (shutdown_led_dc > 0) {
+                shutdown_led_dc--;
+            }
+            break;
+        case MAIN_SHUTDOWN_REACHED:
+            // Blink the LED to indicate we are waiting for release
+            if (shutdown_led_dc < 10) {
+                shutdown_led_dc++;
+            } else if (shutdown_led_dc == 10) {
+                shutdown_led_dc = 100;
+            } else if (shutdown_led_dc <= 90) {
+                shutdown_led_dc = 0;
+            } else if (shutdown_led_dc > 90) {
+                shutdown_led_dc--;
+            }
+            break;
+        case MAIN_SHUTDOWN_REQUESTED:
+            // Drive LOAD_DUMP and KILLME
+            gpio_set_loaddump(GPIO_ON);
+            gpio_set_killme(GPIO_ON);
+            main_shutdown_state = MAIN_SHUTDOWN_WAITING;
+            break;
+        case MAIN_SHUTDOWN_WAITING:
+        default:
+            break;
+        }
+        pwm_set_dutycycle(shutdown_led_dc);
+    }
+}
+
+// USB HID override function return 1 if the activity is trivial or response is null
 uint8_t usbd_hid_no_activity(uint8_t *buf)
 {
     if(buf[0] == ID_DAP_Vendor3 &&  buf[1] == 0)
