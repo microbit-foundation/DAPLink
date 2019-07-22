@@ -55,8 +55,6 @@ typedef struct __attribute__((__packed__)) board_info {
 
 extern const board_info_t g_board_info;
 
-void board_30ms_hook(void);
-
 #ifdef __cplusplus
 extern "C" {
 #endif
