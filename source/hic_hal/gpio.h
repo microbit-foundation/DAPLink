@@ -47,6 +47,7 @@ void gpio_set_cdc_led(gpio_led_state_t state);
 void gpio_set_msc_led(gpio_led_state_t state);
 void gpio_set_killme(gpio_state_t state);
 void gpio_set_loaddump(gpio_state_t state);
+void gpio_set_run_vbat_sense(gpio_state_t state);
 uint8_t gpio_get_reset_btn_no_fwrd(void);
 uint8_t gpio_get_reset_btn_fwrd(void);
 #ifdef PBON_BUTTON

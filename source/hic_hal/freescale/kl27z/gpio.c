@@ -51,8 +51,8 @@ void gpio_init(void)
     // Power regulator signals off
     gpio_set_killme(GPIO_OFF);
     gpio_set_loaddump(GPIO_OFF);
-//    // Voltage monitoring enable off
-//    gpio_set_run_vbat_sense(GPIO_OFF);
+    // Voltage monitoring enable off
+    gpio_set_run_vbat_sense(GPIO_OFF);
     // Set as output
     PIN_HID_LED_GPIO->PDDR  |= PIN_HID_LED;
     PIN_MSC_LED_GPIO->PDDR  |= PIN_MSC_LED;
@@ -103,10 +103,10 @@ void gpio_set_loaddump(gpio_state_t state)
     (GPIO_ON == state) ? (PIN_LOADDUMP_GPIO->PSOR = PIN_LOADDUMP) : (PIN_LOADDUMP_GPIO->PCOR = PIN_LOADDUMP);
 }
 
-//void gpio_set_run_vbat_sense(gpio_state_t state)
-//{
-//    (GPIO_ON == state) ? (PIN_RUN_VMON_BAT_GPIO->PSOR = PIN_RUN_VMON_BAT) : (PIN_RUN_VMON_BAT_GPIO->PCOR = PIN_RUN_VMON_BAT);
-//}
+void gpio_set_run_vbat_sense(gpio_state_t state)
+{
+    (GPIO_ON == state) ? (PIN_RUN_VMON_BAT_GPIO->PSOR = PIN_RUN_VMON_BAT) : (PIN_RUN_VMON_BAT_GPIO->PCOR = PIN_RUN_VMON_BAT);
+}
 
 uint8_t gpio_get_reset_btn_no_fwrd(void)
 {
