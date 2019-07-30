@@ -21,7 +21,6 @@
 
 #include "main.h"
 #include "gpio.h"
-#include "pwr_mon.h"
 #include "validation.h"
 #include "vfs_manager.h"
 #include "cmsis_os2.h"
@@ -74,6 +73,12 @@ static main_led_state_t msc_led_state = MAIN_LED_FLASH;
 
 static main_usb_busy_t usb_busy;
 static uint32_t usb_busy_count;
+
+__attribute__((weak)) bool allow_interface_jump()
+{
+    // Stay in bootloader if reset button is pressed
+    return !gpio_get_reset_btn();
+}
 
 // Timer task, set flags every 30mS and 90mS
 void timer_task_30mS(void * arg)
@@ -234,14 +239,10 @@ int main(void)
     gpio_init();
     // init settings
     config_init();
-    // init power monitoring
-    pwr_mon_init();
-
-    bool battery_powered = pwr_mon_battery_powered();
 
     // check for invalid app image or rst button press. Should be checksum or CRC but NVIC validation is better than nothing.
     // If the interface has set the hold in bootloader setting don't jump to app
-    if ((!gpio_get_reset_btn() || battery_powered) && g_board_info.target_cfg && validate_bin_nvic((uint8_t *)g_board_info.target_cfg->flash_regions[0].start) && !config_ram_get_initial_hold_in_bl()) {
+    if (allow_interface_jump() && g_board_info.target_cfg && validate_bin_nvic((uint8_t *)g_board_info.target_cfg->flash_regions[0].start) && !config_ram_get_initial_hold_in_bl()) {
         // change to the new vector table
         SCB->VTOR = g_board_info.target_cfg->flash_regions[0].start; //bootloaders should only have one flash region for interface
         // modify stack pointer and start app
