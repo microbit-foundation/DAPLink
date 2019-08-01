@@ -31,6 +31,7 @@
 #define _FSL_TPM_H_
 
 #include "fsl_common.h"
+#include "fsl_clock.h"
 
 /*!
  * @addtogroup tpm

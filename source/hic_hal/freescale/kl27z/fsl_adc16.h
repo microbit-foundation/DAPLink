@@ -32,6 +32,7 @@
 #define _FSL_ADC16_H_
 
 #include "fsl_common.h"
+#include "fsl_clock.h"
 
 /*!
  * @addtogroup adc16
