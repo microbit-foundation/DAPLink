@@ -27,7 +27,7 @@
 
 // Warning - changing the interface start will break backwards compatibility
 COMPILER_ASSERT(DAPLINK_ROM_IF_START == KB(32));
-COMPILER_ASSERT(DAPLINK_ROM_IF_SIZE == KB(95));
+COMPILER_ASSERT(DAPLINK_ROM_IF_SIZE == (KB(256) - KB(32) - KB(1)));
 
 /**
 * List of start and size for each size of flash sector
