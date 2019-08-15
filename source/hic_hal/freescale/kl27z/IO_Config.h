@@ -155,7 +155,7 @@ COMPILER_ASSERT(DAPLINK_HIC_ID == DAPLINK_HIC_ID_KL27Z);
 
 // UART
 #define UART_PORT               PORTD
-#define UART_NUM                (1)
+#define UART_NUM                (0)
 // RX PTD6
 #define PIN_UART_RX_GPIO        PTD
 #define PIN_UART_RX_BIT         (6)
@@ -167,8 +167,8 @@ COMPILER_ASSERT(DAPLINK_HIC_ID == DAPLINK_HIC_ID_KL27Z);
 #define PIN_UART_TX             (1<<PIN_UART_TX_BIT)
 #define PIN_UART_TX_MUX_ALT     (3)
 
-#define UART                    LPUART1
-#define UART_RX_TX_IRQn         LPUART1_IRQn
-#define UART_RX_TX_IRQHandler   LPUART1_IRQHandler
+#define UART                    LPUART0
+#define UART_RX_TX_IRQn         LPUART0_IRQn
+#define UART_RX_TX_IRQHandler   LPUART0_IRQHandler
 
 #endif
