@@ -47,7 +47,7 @@ void clear_buffers(void)
 int32_t uart_initialize(void)
 {
     NVIC_DisableIRQ(UART_RX_TX_IRQn);
-
+    
     // enable clk port
     if (UART_PORT == PORTA) {
         SIM->SCGC5 |= SIM_SCGC5_PORTA_MASK;
@@ -66,13 +66,16 @@ int32_t uart_initialize(void)
     }
 
     // enable clk uart
+    if (0 == UART_NUM) {
+        SIM->SOPT2 = ((SIM->SOPT2 & ~SIM_SOPT2_LPUART0SRC_MASK) | SIM_SOPT2_LPUART0SRC(0x1));
+        SIM->SCGC5 |= SIM_SCGC5_LPUART0_MASK;
+    }
+    
     if (1 == UART_NUM) {
+        SIM->SOPT2 = ((SIM->SOPT2 & ~SIM_SOPT2_LPUART1SRC_MASK) | SIM_SOPT2_LPUART1SRC(0x1));
         SIM->SCGC5 |= SIM_SCGC5_LPUART1_MASK;
     }
-
-    if (2 == UART_NUM) {
-        SIM->SCGC4 |= SIM_SCGC4_UART2_MASK;
-    }
+    
 
     // transmitter and receiver disabled
     UART->CTRL &= ~(LPUART_CTRL_RE_MASK | LPUART_CTRL_TE_MASK);
@@ -80,14 +83,14 @@ int32_t uart_initialize(void)
     UART->CTRL &= ~(LPUART_CTRL_RIE_MASK | LPUART_CTRL_TIE_MASK);
 
     clear_buffers();
-
+    
     // alternate setting
     UART_PORT->PCR[PIN_UART_RX_BIT] = PORT_PCR_MUX(PIN_UART_RX_MUX_ALT) | PORT_PCR_PE_MASK | PORT_PCR_PS_MASK;
     UART_PORT->PCR[PIN_UART_TX_BIT] = PORT_PCR_MUX(PIN_UART_TX_MUX_ALT);
     // transmitter and receiver enabled
     UART->CTRL |= LPUART_CTRL_RE_MASK | LPUART_CTRL_TE_MASK;
-    // Enable receive interrupt
-    UART->CTRL |= LPUART_CTRL_RIE_MASK;
+    // Enable receiver interrupt and RX Overrun interrupt
+    UART->CTRL |= LPUART_CTRL_RIE_MASK | LPUART_CTRL_ORIE_MASK;
     NVIC_ClearPendingIRQ(UART_RX_TX_IRQn);
     NVIC_EnableIRQ(UART_RX_TX_IRQn);
     return 1;
@@ -98,7 +101,7 @@ int32_t uart_uninitialize(void)
     // transmitter and receiver disabled
     UART->CTRL &= ~(LPUART_CTRL_RE_MASK | LPUART_CTRL_TE_MASK);
     // disable interrupt
-    UART->CTRL &= ~(LPUART_CTRL_RIE_MASK | LPUART_CTRL_TIE_MASK);
+    UART->CTRL &= ~(LPUART_CTRL_RIE_MASK | LPUART_CTRL_TIE_MASK | LPUART_CTRL_ORIE_MASK);
     clear_buffers();
     return 1;
 }
@@ -158,12 +161,8 @@ int32_t uart_set_configuration(UART_Configuration *config)
                parity_type << LPUART_CTRL_PT_SHIFT;
     dll =  SystemCoreClock / (16 * config->Baudrate);
 
-    if (1 == UART_NUM || 2 == UART_NUM) {
-        dll /= 2; //TODO <<= 1
-    }
-
     // set baudrate
-    UART->BAUD |= dll & LPUART_BAUD_SBR_MASK;
+    UART->BAUD = ((UART->BAUD & ~LPUART_BAUD_SBR_MASK) | LPUART_BAUD_SBR(dll));
     // Enable transmitter and receiver
     UART->CTRL |= LPUART_CTRL_RE_MASK | LPUART_CTRL_TE_MASK;
     // Enable UART interrupt
@@ -218,12 +217,25 @@ void UART_RX_TX_IRQHandler(void)
     s1 = UART->STAT;
     // mask off interrupts that are not enabled
     if (!(UART->CTRL & LPUART_CTRL_RIE_MASK)) {
-        s1 &= ~UART_S1_RDRF_MASK;
+        s1 &= ~LPUART_STAT_RDRF_MASK;
     }
     if (!(UART->CTRL & LPUART_CTRL_TIE_MASK)) {
-        s1 &= ~UART_S1_TDRE_MASK;
+        s1 &= ~LPUART_STAT_TDRE_MASK;
     }
 
+    // If RX overrun
+    if (s1 & LPUART_STAT_OR_MASK)
+    {
+        // Clear overrun flag, otherwise the RX does not work.
+        UART->STAT = ((UART->STAT & 0x3FE00000U) | LPUART_STAT_OR_MASK);
+        
+        if (config_get_overflow_detect()) {
+            if (RX_OVRF_MSG_SIZE <= circ_buf_count_free(&read_buffer)) {
+                circ_buf_write(&read_buffer, (uint8_t*)RX_OVRF_MSG, RX_OVRF_MSG_SIZE);
+            }
+        }
+    }
+    
     // handle character to transmit
     if (s1 & LPUART_STAT_TDRE_MASK) {
         // Assert that there is data in the buffer
@@ -234,6 +246,8 @@ void UART_RX_TX_IRQHandler(void)
         if (circ_buf_count_used(&write_buffer) == 0) {
             // disable TIE interrupt
             UART->CTRL &= ~(LPUART_CTRL_TIE_MASK);
+            // Clear any pending irq that could be triggered before disabling TIE
+            NVIC_ClearPendingIRQ(UART_RX_TX_IRQn);
         }
     }
 
@@ -243,7 +257,7 @@ void UART_RX_TX_IRQHandler(void)
             errorData = UART->DATA;
         } else {
             uint32_t free;
-            uint8_t data;
+            uint8_t data;        
 
             data = UART->DATA;
             free = circ_buf_count_free(&read_buffer);
@@ -259,7 +273,7 @@ void UART_RX_TX_IRQHandler(void)
                 // Drop oldest
                 circ_buf_pop(&read_buffer);
                 circ_buf_push(&read_buffer, data);
-            }
+            } 
         }
     }
 }
