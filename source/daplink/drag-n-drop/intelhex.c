@@ -30,7 +30,9 @@ enum hex_record_t {
     EXT_SEG_ADDR_RECORD = 2,
     START_SEG_ADDR_RECORD = 3,
     EXT_LINEAR_ADDR_RECORD = 4,
-    START_LINEAR_ADDR_RECORD = 5
+    START_LINEAR_ADDR_RECORD = 5,
+	CUSTOM_METADATA_RECORD = 0x0A,
+	CUSTOM_DATA_RECORD = 0x0D,
 };
 
 typedef union hex_line_t hex_line_t;
@@ -82,6 +84,7 @@ static uint8_t validate_checksum(hex_line_t *record)
 static hex_line_t line = {0}, shadow_line = {0};
 static uint32_t next_address_to_write = 0;
 static uint8_t low_nibble = 0, idx = 0, record_processed = 0, load_unaligned_record = 0;
+static uint8_t binary_version = 0;
 
 void reset_hex_parser(void)
 {
@@ -136,7 +139,7 @@ hexfile_parse_status_t parse_hex_blob(const uint8_t *hex_blob, const uint32_t he
             default:
                 if (low_nibble) {
                     line.buf[idx] |= ctoh((uint8_t)(*hex_blob)) & 0xf;
-                    if (++idx >= (line.byte_count + 5)) { //all data in                        
+                    if (++idx >= (line.byte_count + 5)) { //all data in
                         if (0 == validate_checksum(&line)) {
                             status = HEX_PARSE_CKSUM_FAIL;
                             goto hex_parser_exit;
@@ -147,28 +150,38 @@ hexfile_parse_status_t parse_hex_blob(const uint8_t *hex_blob, const uint32_t he
                                 line.address = swap16(line.address);
 
                                 switch (line.record_type) {
+                                    case CUSTOM_METADATA_RECORD:
+                                        binary_version = line.data[0];
+                                        break;
                                     case DATA_RECORD:
+                                    case CUSTOM_DATA_RECORD:
                                         // keeping a record of the last hex record
                                         memcpy(shadow_line.buf, line.buf, sizeof(hex_line_t));
 
-                                        // verify this is a continous block of memory or need to exit and dump
-                                        if (((next_address_to_write & 0xffff0000) | line.address) != next_address_to_write) {
-                                            load_unaligned_record = 1;
-                                            status = HEX_PARSE_UNALIGNED;
-                                            goto hex_parser_exit;
-                                        }
+                                        if (binary_version == 0 || binary_version == 2){
+                                            // Only save data from the correct binary
+                                            // verify this is a continous block of memory or need to exit and dump
+                                            if (((next_address_to_write & 0xffff0000) | line.address) != next_address_to_write) {
+                                                load_unaligned_record = 1;
+                                                status = HEX_PARSE_UNALIGNED;
+                                                goto hex_parser_exit;
+                                            }
 
-                                        // move from line buffer back to input buffer
-                                        memcpy(bin_buf, line.data, line.byte_count);
-                                        bin_buf += line.byte_count;
-                                        *bin_buf_cnt = (uint32_t)(*bin_buf_cnt) + line.byte_count;
-                                        // Save next address to write
-                                        next_address_to_write = ((next_address_to_write & 0xffff0000) | line.address) + line.byte_count;
+                                            // move from line buffer back to input buffer
+                                            memcpy(bin_buf, line.data, line.byte_count);
+                                            bin_buf += line.byte_count;
+                                            *bin_buf_cnt = (uint32_t)(*bin_buf_cnt) + line.byte_count;
+                                            // Save next address to write
+                                            next_address_to_write = ((next_address_to_write & 0xffff0000) | line.address) + line.byte_count;
+                                        }
                                         break;
 
                                     case EOF_RECORD:
-                                        status = HEX_PARSE_EOF;
-                                        goto hex_parser_exit;
+                                        if (binary_version == 0 || binary_version == 2){
+                                            // Exit only if EOF from the correct binary
+                                            status = HEX_PARSE_EOF;
+                                            goto hex_parser_exit;
+                                        }
 
                                     case EXT_SEG_ADDR_RECORD:
                                         // Could have had data in the buffer so must exit and try to program
@@ -201,7 +214,7 @@ hexfile_parse_status_t parse_hex_blob(const uint8_t *hex_blob, const uint32_t he
                                         break;
                                 }
                             }
-                        }                        
+                        }
                     }
                 } else {
                     if (idx < sizeof(hex_line_t)) {
