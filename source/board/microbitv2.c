@@ -24,7 +24,7 @@
 #include "target_family.h"
 #include "target_board.h"
 
-const char * const board_id_mb_2_0 = "9902";
+const char * const board_id_mb_2_0 = "9903";
 
 extern target_cfg_t target_device_nrf52;
 
