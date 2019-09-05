@@ -131,6 +131,12 @@ __attribute__((weak)) void handle_reset_button(void)
     }
 }
 
+__attribute__((weak)) void board_handle_powerdown()
+{
+    // TODO: put the interface chip in sleep mode
+    while (1);
+}
+
 // Timer task, set flags every 30mS and 90mS
 void timer_task_30mS(void * arg)
 {
@@ -308,8 +314,7 @@ void main_task(void * arg)
             gpio_set_cdc_led(GPIO_LED_OFF);
             gpio_set_msc_led(GPIO_LED_OFF);
 
-            // TODO: put the interface chip in sleep mode
-            while (1);
+            board_handle_powerdown();
         }
 
         if (flags & FLAGS_MAIN_DISABLEDEBUG) {
