@@ -1,32 +1,9 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
- * Copyright (c) 2016 - 2017 , NXP
+ * Copyright 2016 - 2019, NXP
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * o Redistributions of source code must retain the above copyright notice, this list
- *   of conditions and the following disclaimer.
- *
- * o Redistributions in binary form must reproduce the above copyright notice, this
- *   list of conditions and the following disclaimer in the documentation and/or
- *   other materials provided with the distribution.
- *
- * o Neither the name of copyright holder nor the names of its
- *   contributors may be used to endorse or promote products derived from this
- *   software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 
 #ifndef _FSL_CLOCK_H_
@@ -47,7 +24,7 @@
  *
  * When set to 0, peripheral drivers will enable clock in initialize function
  * and disable clock in de-initialize function. When set to 1, peripheral
- * driver will not control the clock, application could contol the clock out of
+ * driver will not control the clock, application could control the clock out of
  * the driver.
  *
  * @note All drivers share this feature switcher. If it is set to 1, application
@@ -63,9 +40,13 @@
 
 /*! @name Driver version */
 /*@{*/
-/*! @brief CLOCK driver version 2.1.1. */
-#define FSL_CLOCK_DRIVER_VERSION (MAKE_VERSION(2, 1, 1))
+/*! @brief CLOCK driver version 2.2.0. */
+#define FSL_CLOCK_DRIVER_VERSION (MAKE_VERSION(2, 2, 0))
 /*@}*/
+
+#ifndef SDK_DEVICE_MAXIMUM_CPU_CLOCK_FREQUENCY
+#define SDK_DEVICE_MAXIMUM_CPU_CLOCK_FREQUENCY 48000000
+#endif
 
 /*! @brief External XTAL0 (OSC0) clock frequency.
  *
@@ -81,7 +62,7 @@
  * OSC0 using the CLOCK_InitOsc0. All other cores need to call the CLOCK_SetXtal0Freq
  * to get a valid clock frequency.
  */
-extern uint32_t g_xtal0Freq;
+extern volatile uint32_t g_xtal0Freq;
 
 /*! @brief The external XTAL32/EXTAL32/RTC_CLKIN clock frequency.
  *
@@ -92,7 +73,7 @@ extern uint32_t g_xtal0Freq;
  * the clock. All other cores need to call the CLOCK_SetXtal32Freq
  * to get a valid clock frequency.
  */
-extern uint32_t g_xtal32Freq;
+extern volatile uint32_t g_xtal32Freq;
 
 /*! @brief Clock ip name array for DMAMUX. */
 #define DMAMUX_CLOCKS  \
@@ -116,6 +97,12 @@ extern uint32_t g_xtal32Freq;
 #define SPI_CLOCKS               \
     {                            \
         kCLOCK_Spi0, kCLOCK_Spi1 \
+    }
+
+/*! @brief Clock ip name array for SLCD. */
+#define SLCD_CLOCKS  \
+    {                \
+        kCLOCK_Slcd0 \
     }
 
 /*! @brief Clock ip name array for PIT. */
@@ -255,7 +242,7 @@ typedef enum _clock_name
 typedef enum _clock_usb_src
 {
     kCLOCK_UsbSrcIrc48M = SIM_SOPT2_USBSRC(1U), /*!< Use IRC48M.    */
-    kCLOCK_UsbSrcExt = SIM_SOPT2_USBSRC(0U)     /*!< Use USB_CLKIN. */
+    kCLOCK_UsbSrcExt    = SIM_SOPT2_USBSRC(0U)  /*!< Use USB_CLKIN. */
 } clock_usb_src_t;
 /*------------------------------------------------------------------------------
 
@@ -289,35 +276,36 @@ typedef enum _clock_usb_src
 typedef enum _clock_ip_name
 {
     kCLOCK_IpInvalid = 0U,
-    kCLOCK_I2c0 = CLK_GATE_DEFINE(0x1034U, 6U),
-    kCLOCK_I2c1 = CLK_GATE_DEFINE(0x1034U, 7U),
-    kCLOCK_Uart2 = CLK_GATE_DEFINE(0x1034U, 12U),
-    kCLOCK_Usbfs0 = CLK_GATE_DEFINE(0x1034U, 18U),
-    kCLOCK_Cmp0 = CLK_GATE_DEFINE(0x1034U, 19U),
-    kCLOCK_Vref0 = CLK_GATE_DEFINE(0x1034U, 20U),
-    kCLOCK_Spi0 = CLK_GATE_DEFINE(0x1034U, 22U),
-    kCLOCK_Spi1 = CLK_GATE_DEFINE(0x1034U, 23U),
+    kCLOCK_I2c0      = CLK_GATE_DEFINE(0x1034U, 6U),
+    kCLOCK_I2c1      = CLK_GATE_DEFINE(0x1034U, 7U),
+    kCLOCK_Uart2     = CLK_GATE_DEFINE(0x1034U, 12U),
+    kCLOCK_Usbfs0    = CLK_GATE_DEFINE(0x1034U, 18U),
+    kCLOCK_Cmp0      = CLK_GATE_DEFINE(0x1034U, 19U),
+    kCLOCK_Vref0     = CLK_GATE_DEFINE(0x1034U, 20U),
+    kCLOCK_Spi0      = CLK_GATE_DEFINE(0x1034U, 22U),
+    kCLOCK_Spi1      = CLK_GATE_DEFINE(0x1034U, 23U),
 
-    kCLOCK_Lptmr0 = CLK_GATE_DEFINE(0x1038U, 0U),
-    kCLOCK_PortA = CLK_GATE_DEFINE(0x1038U, 9U),
-    kCLOCK_PortB = CLK_GATE_DEFINE(0x1038U, 10U),
-    kCLOCK_PortC = CLK_GATE_DEFINE(0x1038U, 11U),
-    kCLOCK_PortD = CLK_GATE_DEFINE(0x1038U, 12U),
-    kCLOCK_PortE = CLK_GATE_DEFINE(0x1038U, 13U),
+    kCLOCK_Lptmr0  = CLK_GATE_DEFINE(0x1038U, 0U),
+    kCLOCK_PortA   = CLK_GATE_DEFINE(0x1038U, 9U),
+    kCLOCK_PortB   = CLK_GATE_DEFINE(0x1038U, 10U),
+    kCLOCK_PortC   = CLK_GATE_DEFINE(0x1038U, 11U),
+    kCLOCK_PortD   = CLK_GATE_DEFINE(0x1038U, 12U),
+    kCLOCK_PortE   = CLK_GATE_DEFINE(0x1038U, 13U),
+    kCLOCK_Slcd0   = CLK_GATE_DEFINE(0x1038U, 19U),
     kCLOCK_Lpuart0 = CLK_GATE_DEFINE(0x1038U, 20U),
     kCLOCK_Lpuart1 = CLK_GATE_DEFINE(0x1038U, 21U),
     kCLOCK_Flexio0 = CLK_GATE_DEFINE(0x1038U, 31U),
 
-    kCLOCK_Ftf0 = CLK_GATE_DEFINE(0x103CU, 0U),
+    kCLOCK_Ftf0    = CLK_GATE_DEFINE(0x103CU, 0U),
     kCLOCK_Dmamux0 = CLK_GATE_DEFINE(0x103CU, 1U),
-    kCLOCK_Sai0 = CLK_GATE_DEFINE(0x103CU, 15U),
-    kCLOCK_Pit0 = CLK_GATE_DEFINE(0x103CU, 23U),
-    kCLOCK_Tpm0 = CLK_GATE_DEFINE(0x103CU, 24U),
-    kCLOCK_Tpm1 = CLK_GATE_DEFINE(0x103CU, 25U),
-    kCLOCK_Tpm2 = CLK_GATE_DEFINE(0x103CU, 26U),
-    kCLOCK_Adc0 = CLK_GATE_DEFINE(0x103CU, 27U),
-    kCLOCK_Rtc0 = CLK_GATE_DEFINE(0x103CU, 29U),
-    kCLOCK_Dac0 = CLK_GATE_DEFINE(0x103CU, 31U),
+    kCLOCK_Sai0    = CLK_GATE_DEFINE(0x103CU, 15U),
+    kCLOCK_Pit0    = CLK_GATE_DEFINE(0x103CU, 23U),
+    kCLOCK_Tpm0    = CLK_GATE_DEFINE(0x103CU, 24U),
+    kCLOCK_Tpm1    = CLK_GATE_DEFINE(0x103CU, 25U),
+    kCLOCK_Tpm2    = CLK_GATE_DEFINE(0x103CU, 26U),
+    kCLOCK_Adc0    = CLK_GATE_DEFINE(0x103CU, 27U),
+    kCLOCK_Rtc0    = CLK_GATE_DEFINE(0x103CU, 29U),
+    kCLOCK_Dac0    = CLK_GATE_DEFINE(0x103CU, 31U),
 
     kCLOCK_Dma0 = CLK_GATE_DEFINE(0x1040U, 8U),
 } clock_ip_name_t;
@@ -332,16 +320,16 @@ typedef struct _sim_clock_config
 /*! @brief Oscillator capacitor load setting.*/
 enum _osc_cap_load
 {
-    kOSC_Cap2P = OSC_CR_SC2P_MASK,  /*!< 2  pF capacitor load */
-    kOSC_Cap4P = OSC_CR_SC4P_MASK,  /*!< 4  pF capacitor load */
-    kOSC_Cap8P = OSC_CR_SC8P_MASK,  /*!< 8  pF capacitor load */
+    kOSC_Cap2P  = OSC_CR_SC2P_MASK, /*!< 2  pF capacitor load */
+    kOSC_Cap4P  = OSC_CR_SC4P_MASK, /*!< 4  pF capacitor load */
+    kOSC_Cap8P  = OSC_CR_SC8P_MASK, /*!< 8  pF capacitor load */
     kOSC_Cap16P = OSC_CR_SC16P_MASK /*!< 16 pF capacitor load */
 };
 
 /*! @brief OSCERCLK enable mode. */
 enum _oscer_enable_mode
 {
-    kOSC_ErClkEnable = OSC_CR_ERCLKEN_MASK,       /*!< Enable.              */
+    kOSC_ErClkEnable       = OSC_CR_ERCLKEN_MASK, /*!< Enable.              */
     kOSC_ErClkEnableInStop = OSC_CR_EREFSTEN_MASK /*!< Enable in stop mode. */
 };
 
@@ -355,7 +343,7 @@ typedef struct _oscer_config
 /*! @brief The OSC work mode. */
 typedef enum _osc_mode
 {
-    kOSC_ModeExt = 0U,                                            /*!< Use external clock.   */
+    kOSC_ModeExt         = 0U,                                    /*!< Use external clock.   */
     kOSC_ModeOscLowPower = MCG_C2_EREFS0_MASK,                    /*!< Oscillator low power. */
     kOSC_ModeOscHighGain = MCG_C2_EREFS0_MASK | MCG_C2_HGO0_MASK, /*!< Oscillator high gain. */
 } osc_mode_t;
@@ -419,7 +407,7 @@ typedef enum _mcglite_mode
 /*! @brief MCG internal reference clock (MCGIRCLK) enable mode definition. */
 enum _mcglite_irclk_enable_mode
 {
-    kMCGLITE_IrclkEnable = MCG_C1_IRCLKEN_MASK,       /*!< MCGIRCLK enable.              */
+    kMCGLITE_IrclkEnable       = MCG_C1_IRCLKEN_MASK, /*!< MCGIRCLK enable.              */
     kMCGLITE_IrclkEnableInStop = MCG_C1_IREFSTEN_MASK /*!< MCGIRCLK enable in stop mode. */
 };
 
@@ -642,7 +630,7 @@ void CLOCK_SetSimConfig(sim_clock_config_t const *config);
  */
 static inline void CLOCK_SetSimSafeDivs(void)
 {
-    SIM->CLKDIV1 = 0x10070000U;
+    SIM->CLKDIV1 = 0x10030000U;
 }
 
 /*!
@@ -671,13 +659,13 @@ uint32_t CLOCK_GetOutClkFreq(void);
 uint32_t CLOCK_GetInternalRefClkFreq(void);
 
 /*!
-* @brief Gets the current MCGPCLK frequency.
-*
-* This function gets the MCGPCLK frequency in Hz based on the current MCG_Lite
-* register settings.
-*
-* @return The frequency of MCGPCLK.
-*/
+ * @brief Gets the current MCGPCLK frequency.
+ *
+ * This function gets the MCGPCLK frequency in Hz based on the current MCG_Lite
+ * register settings.
+ *
+ * @return The frequency of MCGPCLK.
+ */
 uint32_t CLOCK_GetPeriphClkFreq(void);
 
 /*! @}*/
@@ -814,6 +802,16 @@ static inline void CLOCK_SetXtal32Freq(uint32_t freq)
     g_xtal32Freq = freq;
 }
 /* @} */
+
+/*!
+ * @brief Delay at least for several microseconds.
+ *  Please note that, this API will calculate the microsecond period with the maximum
+ *  supported CPU frequency, so this API will only delay for at least the given microseconds, if precise
+ *  delay count was needed, please implement a new timer count to achieve this function.
+ *
+ * @param delay_us  Delay time in unit of microsecond.
+ */
+void SDK_DelayAtLeastUs(uint32_t delay_us);
 
 #if defined(__cplusplus)
 }
