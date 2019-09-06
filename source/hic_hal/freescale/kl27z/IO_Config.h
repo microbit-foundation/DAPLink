@@ -113,6 +113,9 @@ COMPILER_ASSERT(DAPLINK_HIC_ID == DAPLINK_HIC_ID_KL27Z);
 #define PIN_SW_RESET            (1<<PIN_SW_RESET_BIT)
 #define SW_RESET_PRESSED        (0)
 #define SW_RESET_NOT_PRESSED    (1)
+#define PIN_SW_RESET_LLWU_PIN   (14)
+#define PIN_SW_RESET_LLWU_WAKEUP_TYPE   kLLWU_ExternalPinRisingEdge
+#define PIN_SW_RESET_PORT_WAKEUP_TYPE   kPORT_InterruptRisingEdge
 
 // KILLME PTC7
 #define PIN_KILLME_PORT         PORTC
@@ -147,7 +150,9 @@ COMPILER_ASSERT(DAPLINK_HIC_ID == DAPLINK_HIC_ID_KL27Z);
 // define the long and short reset button presses
 #define RESET_SHORT_PRESS          8    // x 30ms debounce time =  240ms
 #define RESET_LONG_PRESS           130  // x 30ms debounce time = 3900ms
-#define RESET_MAX_LENGTH_PRESS     RESET_LONG_PRESS
+#define RESET_2SEC_PRESS           66   // x 30ms debounce time = 1980ms
+#define RESET_VERY_LONG_PRESS      (RESET_LONG_PRESS + RESET_2SEC_PRESS * 1)
+#define RESET_MAX_LENGTH_PRESS     RESET_VERY_LONG_PRESS
 
 // Connected LED                Not available
 
