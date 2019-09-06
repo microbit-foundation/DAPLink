@@ -134,7 +134,6 @@ __attribute__((weak)) void handle_reset_button(void)
 __attribute__((weak)) void board_handle_powerdown()
 {
     // TODO: put the interface chip in sleep mode
-    while (1);
 }
 
 // Timer task, set flags every 30mS and 90mS
