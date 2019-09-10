@@ -27,6 +27,8 @@
 #include "gpio.h"
 #include "power.h"
 #include "rl_usb.h" 
+#include "pwr_mon.h"
+#include "main.h"
 
 #ifdef DRAG_N_DROP_SUPPORT
 #include "flash_intf.h"
@@ -35,6 +37,7 @@
 const char * const board_id_mb_2_0 = "9902";
 
 extern target_cfg_t target_device_nrf52;
+extern main_usb_connect_t usb_state;
 
 typedef enum main_shutdown_state {
     MAIN_SHUTDOWN_WAITING = 0,
@@ -52,6 +55,7 @@ extern void main_powerdown_event(void);
 static main_shutdown_state_t main_shutdown_state = MAIN_SHUTDOWN_WAITING;
 static uint8_t shutdown_led_dc = 100;
 static app_power_mode_t interface_power_mode;
+static bool battery_powered;
 
 // Called in main_task() to init before USB and files are configured
 static void prerun_board_config(void)
@@ -59,12 +63,22 @@ static void prerun_board_config(void)
     target_device = target_device_nrf52;
     target_device.rt_board_id = board_id_mb_2_0;
 
+    // init power monitoring
+    pwr_mon_init();
+
+    battery_powered = pwr_mon_battery_powered();
+
     pwm_init();
     pwm_init_pins();
-
-    // Turn on the red LED
-    pwm_set_dutycycle(100);
     
+    if (battery_powered == true){
+        // Turn on the red LED
+        pwm_set_dutycycle(100);
+    } else {
+        // Turn off the red LED
+        pwm_set_dutycycle(0);       
+    }
+
     power_init();
 }
 
@@ -130,7 +144,7 @@ void handle_reset_button()
 void board_30ms_hook()
 {
     // need to define battery powered and set it someplace
-    if (1) {
+    if (battery_powered == true || usb_state == USB_DISCONNECTED) {
         switch (main_shutdown_state) {
         case MAIN_SHUTDOWN_CANCEL:
             main_shutdown_state = MAIN_SHUTDOWN_WAITING;

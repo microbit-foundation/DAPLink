@@ -362,6 +362,7 @@ void main_task(void * arg)
                         // powered by a USB wall wart or similar power source. Go ahead and enable
                         // board power.
                         gpio_set_board_power(true);
+                        usb_state = USB_DISCONNECTED;
                     }
 
                     break;
