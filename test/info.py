@@ -273,7 +273,7 @@ SUPPORTED_CONFIGURATIONS = [
     (   0x9016,     VENDOR_TO_FAMILY('Nordic', 2),      'lpc11u35_96b_nitrogen_if',                 None,               None                                    ), # TODO - set target to 'Seeed-96Boards-Nitrogen' when mbed-os supports this
     (   0x9900,     VENDOR_TO_FAMILY('Nordic', 1),      'kl26z_microbit_if',                        'kl26z_bl',         'Microbit'                              ),
     (   0x9901,     VENDOR_TO_FAMILY('Nordic', 1),      'kl26z_microbit_if',                        'kl26z_bl',         'Microbit'                              ),
-    (   0x9902,     VENDOR_TO_FAMILY('Nordic', 1),      'kl27z_microbit_if',                        'kl27z_bl',         'Microbit'                              ),
+    (   0x9903,     VENDOR_TO_FAMILY('Nordic', 2),      'kl27z_microbit_if',                        'kl27z_bl',         'Microbit'                              ),
     (   0xC000,     VENDOR_TO_FAMILY('Stub', 1),        'lpc11u35_cocorico_if',                     None,               'CoCo-ri-Co'                            ),
     (   0xC006,     VENDOR_TO_FAMILY('Nordic', 1),      'lpc11u35_vbluno51_if',                     None,               'VBLUNO51'                              ),
     (   0xC005,     VENDOR_TO_FAMILY('Nordic', 1),      'lpc11u35_mtconnect04s_if',                 None,               'MtConnect04S'                          ),

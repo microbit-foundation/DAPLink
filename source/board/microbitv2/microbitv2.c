@@ -34,7 +34,7 @@
 #include "flash_intf.h"
 #endif
 
-const char * const board_id_mb_2_0 = "9902";
+const char * const board_id_mb_2_0 = "9903";
 
 extern target_cfg_t target_device_nrf52;
 extern main_usb_connect_t usb_state;
