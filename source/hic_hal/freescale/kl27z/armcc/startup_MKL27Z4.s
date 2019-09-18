@@ -275,8 +275,10 @@ Reset_Handler   PROC
                 EXPORT  Reset_Handler             [WEAK]
                 IMPORT  SystemInit
                 IMPORT  __main
+                CPSID   I               ; Mask interrupts
                 LDR     R0, =SystemInit
                 BLX     R0
+                CPSIE   I               ; Unmask interrupts
                 LDR     R0, =__main
                 BX      R0
                 ENDP
