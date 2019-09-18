@@ -38,8 +38,6 @@ void gpio_init(void)
     PIN_HID_LED_PORT->PCR[PIN_HID_LED_BIT] = PORT_PCR_MUX(1);
     PIN_MSC_LED_PORT->PCR[PIN_MSC_LED_BIT] = PORT_PCR_MUX(1);
     PIN_CDC_LED_PORT->PCR[PIN_CDC_LED_BIT] = PORT_PCR_MUX(1);
-    PIN_KILLME_PORT->PCR[PIN_KILLME_BIT]   = PORT_PCR_MUX(1);
-    PIN_LOADDUMP_PORT->PCR[PIN_LOADDUMP_BIT] = PORT_PCR_MUX(1);
     PIN_SW_RESET_PORT->PCR[PIN_SW_RESET_BIT] = PORT_PCR_MUX(1);
     PIN_RED_LED_PORT->PCR[PIN_RED_LED_BIT] = PORT_PCR_MUX(1);
     PIN_RUN_VMON_BAT_PORT->PCR[PIN_RUN_VMON_BAT_BIT] = PORT_PCR_MUX(1);
@@ -48,17 +46,12 @@ void gpio_init(void)
     gpio_set_cdc_led(GPIO_LED_OFF);
     gpio_set_msc_led(GPIO_LED_OFF);
 //    gpio_set_red_led(GPIO_LED_OFF);
-    // Power regulator signals off
-    gpio_set_killme(GPIO_OFF);
-    gpio_set_loaddump(GPIO_OFF);
     // Voltage monitoring enable off
     gpio_set_run_vbat_sense(GPIO_OFF);
     // Set as output
     PIN_HID_LED_GPIO->PDDR  |= PIN_HID_LED;
     PIN_MSC_LED_GPIO->PDDR  |= PIN_MSC_LED;
     PIN_CDC_LED_GPIO->PDDR  |= PIN_CDC_LED;
-    PIN_KILLME_GPIO->PDDR   |= PIN_KILLME;
-    PIN_LOADDUMP_GPIO->PDDR |= PIN_LOADDUMP;
     PIN_RED_LED_GPIO->PDDR |= PIN_RED_LED;
     PIN_RUN_VMON_BAT_GPIO->PDDR |= PIN_RUN_VMON_BAT;
     // set as input
@@ -92,16 +85,6 @@ void gpio_set_msc_led(gpio_led_state_t state)
 //{
 //    (GPIO_LED_ON == state) ? (PIN_RED_LED_GPIO->PSOR = PIN_RED_LED) : (PIN_RED_LED_GPIO->PCOR = PIN_RED_LED);
 //}
-
-void gpio_set_killme(gpio_state_t state)
-{
-    (GPIO_ON == state) ? (PIN_KILLME_GPIO->PSOR = PIN_KILLME) : (PIN_KILLME_GPIO->PCOR = PIN_KILLME);
-}
-
-void gpio_set_loaddump(gpio_state_t state)
-{
-    (GPIO_ON == state) ? (PIN_LOADDUMP_GPIO->PSOR = PIN_LOADDUMP) : (PIN_LOADDUMP_GPIO->PCOR = PIN_LOADDUMP);
-}
 
 void gpio_set_run_vbat_sense(gpio_state_t state)
 {

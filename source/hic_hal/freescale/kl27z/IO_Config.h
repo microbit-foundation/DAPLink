@@ -43,13 +43,13 @@ COMPILER_ASSERT(DAPLINK_HIC_ID == DAPLINK_HIC_ID_KL27Z);
 // SWCLK Pin                    PTC5(C5)
 #define PIN_SWCLK_PORT          PORTC
 #define PIN_SWCLK_GPIO          PTC
-#define PIN_SWCLK_BIT           (5)
+#define PIN_SWCLK_BIT           (6)
 #define PIN_SWCLK               (1<<PIN_SWCLK_BIT)
 
 // SWDIO Pin                    PTC6(C6)
 #define PIN_SWDIO_PORT          PORTC
 #define PIN_SWDIO_GPIO          PTC
-#define PIN_SWDIO_BIT           (6)
+#define PIN_SWDIO_BIT           (5)
 #define PIN_SWDIO               (1<<PIN_SWDIO_BIT)
 
 // nRESET Pin                   PTA20(A20)
@@ -117,35 +117,22 @@ COMPILER_ASSERT(DAPLINK_HIC_ID == DAPLINK_HIC_ID_KL27Z);
 #define PIN_SW_RESET_LLWU_WAKEUP_TYPE   kLLWU_ExternalPinRisingEdge
 #define PIN_SW_RESET_PORT_WAKEUP_TYPE   kPORT_InterruptRisingEdge
 
-// KILLME PTC7
-#define PIN_KILLME_PORT         PORTC
-#define PIN_KILLME_GPIO         PTC
-#define PIN_KILLME_BIT          (7)
-#define PIN_KILLME              (1<<PIN_KILLME_BIT)
-
-// LOADDUMP PTC4
-#define PIN_LOADDUMP_PORT       PORTC
-#define PIN_LOADDUMP_GPIO       PTC
-#define PIN_LOADDUMP_BIT        (4)
-#define PIN_LOADDUMP            (1<<PIN_LOADDUMP_BIT)
+// WAKE_ON_EDGE PTC4
+#define PIN_WAKE_ON_EDGE_PORT   PORTC
+#define PIN_WAKE_ON_EDGE_GPIO   PTC
+#define PIN_WAKE_ON_EDGE_BIT    (4)
+#define PIN_WAKE_ON_EDGE        (1<<PIN_WAKE_ON_EDGE_BIT)
 
 // Power LEDs
 
-// Orange LED PTB0, configured as HID/MSC/CDC LEDs
+// Yellow LED PTB0, configured as HID/MSC/CDC LEDs
 
-// Red Spare LED PTA2
-#define PIN_RED_LED_PORT         PORTA
-#define PIN_RED_LED_GPIO         PTA
-#define PIN_RED_LED_BIT          (2)
+// Red Spare LED PTD7
+#define PIN_RED_LED_PORT         PORTD
+#define PIN_RED_LED_GPIO         PTD
+#define PIN_RED_LED_BIT          (7)
 #define PIN_RED_LED              (1<<PIN_RED_LED_BIT)
-#define PIN_RED_CH_NUMBER        1
 
-#define RED_LED_PWM_FREQ_HZ      2000
-
-// PWM settings for the board
-#define BOARD_TPM_BASEADDR  TPM2
-#define BOARD_TPM_CHANNEL   1
-#define TPM_LED_ON_LEVEL    kTPM_HighTrue
 
 // define the long and short reset button presses
 #define RESET_SHORT_PRESS          8    // x 30ms debounce time =  240ms
@@ -154,26 +141,32 @@ COMPILER_ASSERT(DAPLINK_HIC_ID == DAPLINK_HIC_ID_KL27Z);
 #define RESET_VERY_LONG_PRESS      (RESET_LONG_PRESS + RESET_2SEC_PRESS * 1)
 #define RESET_MAX_LENGTH_PRESS     RESET_VERY_LONG_PRESS
 
+// BOARD REV ID
+#define PIN_BOARD_REV_ID_PORT   PORTD
+#define PIN_BOARD_REV_ID_GPIO   PTD
+#define PIN_BOARD_REV_ID_BIT    (6)
+#define PIN_BOARD_REV_ID        (1<<PIN_BOARD_REV_ID_BIT)
+
 // Connected LED                Not available
 
 // Target Running LED           Not available
 
 // UART
-#define UART_PORT               PORTD
-#define UART_NUM                (0)
+#define UART_PORT               PORTA
+#define UART_NUM                (1)
 // RX PTD6
-#define PIN_UART_RX_GPIO        PTD
-#define PIN_UART_RX_BIT         (6)
+#define PIN_UART_RX_GPIO        PTA
+#define PIN_UART_RX_BIT         (18)
 #define PIN_UART_RX             (1<<PIN_UART_RX_BIT)
 #define PIN_UART_RX_MUX_ALT     (3)
 // TX PTD7
-#define PIN_UART_TX_GPIO        PTD
-#define PIN_UART_TX_BIT         (7)
+#define PIN_UART_TX_GPIO        PTA
+#define PIN_UART_TX_BIT         (19)
 #define PIN_UART_TX             (1<<PIN_UART_TX_BIT)
 #define PIN_UART_TX_MUX_ALT     (3)
 
-#define UART                    LPUART0
-#define UART_RX_TX_IRQn         LPUART0_IRQn
-#define UART_RX_TX_IRQHandler   LPUART0_IRQHandler
+#define UART                    LPUART1
+#define UART_RX_TX_IRQn         LPUART1_IRQn
+#define UART_RX_TX_IRQHandler   LPUART1_IRQHandler
 
 #endif
