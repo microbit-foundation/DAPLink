@@ -25,7 +25,7 @@
 #include "target_board.h"
 
 const char * const board_id_mb_2_0 = "9903";
-const uint8_t board_id_mb_2_0_hex[2] = {0x99, 0x03};
+const uint16_t board_id_hex = 0x9903;
 
 extern target_cfg_t target_device_nrf52;
 

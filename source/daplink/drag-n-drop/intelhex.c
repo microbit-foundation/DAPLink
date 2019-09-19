@@ -84,8 +84,8 @@ static uint8_t validate_checksum(hex_line_t *record)
 static hex_line_t line = {0}, shadow_line = {0};
 static uint32_t next_address_to_write = 0;
 static uint8_t low_nibble = 0, idx = 0, record_processed = 0, load_unaligned_record = 0;
-static uint8_t binary_version[2] = {0};
-extern const uint8_t board_id_mb_2_0_hex[];
+static uint16_t binary_version = 0;
+uint16_t board_id_hex __attribute__((weak));
 
 void reset_hex_parser(void)
 {
@@ -96,7 +96,7 @@ void reset_hex_parser(void)
     idx = 0;
     record_processed = 0;
     load_unaligned_record = 0;
-    memset(binary_version, 0, sizeof(binary_version));
+    binary_version = 0;
 }
 
 hexfile_parse_status_t parse_hex_blob(const uint8_t *hex_blob, const uint32_t hex_blob_size, uint32_t *hex_parse_cnt, uint8_t *bin_buf, const uint32_t bin_buf_size, uint32_t *bin_buf_address, uint32_t *bin_buf_cnt)
@@ -105,7 +105,6 @@ hexfile_parse_status_t parse_hex_blob(const uint8_t *hex_blob, const uint32_t he
     hexfile_parse_status_t status = HEX_PARSE_UNINIT;
     // reset the amount of data that is being return'd
     *bin_buf_cnt = (uint32_t)0;
-    uint8_t metadata_header_found = 0;
 
     // we had an exit state where the address was unaligned to the previous record and data count.
     //  Need to pop the last record into the buffer before decoding anthing else since it was
@@ -154,16 +153,14 @@ hexfile_parse_status_t parse_hex_blob(const uint8_t *hex_blob, const uint32_t he
 
                                 switch (line.record_type) {
                                     case CUSTOM_METADATA_RECORD:
-                                        memcpy(binary_version, &line.data[0], sizeof(binary_version));
-                                        metadata_header_found = 1;
+                                        binary_version = (uint16_t) line.data[0] << 8 | line.data[1];
                                         break;
                                     case DATA_RECORD:
                                     case CUSTOM_DATA_RECORD:
                                         // keeping a record of the last hex record
                                         memcpy(shadow_line.buf, line.buf, sizeof(hex_line_t));
 
-                                        if (memcmp(binary_version, (uint8_t[]){0x00, 0x00}, sizeof(binary_version)) == 0 \
-                                                || memcmp(binary_version, board_id_mb_2_0_hex, sizeof(binary_version)) == 0){
+                                        if (binary_version == 0 || binary_version == board_id_hex){
                                             // Only save data from the correct binary
                                             // verify this is a continous block of memory or need to exit and dump
                                             if (((next_address_to_write & 0xffff0000) | line.address) != next_address_to_write) {
@@ -182,18 +179,8 @@ hexfile_parse_status_t parse_hex_blob(const uint8_t *hex_blob, const uint32_t he
                                         break;
 
                                     case EOF_RECORD:
-                                        if (memcmp(binary_version, (uint8_t[]){0x00, 0x00}, sizeof(binary_version)) == 0 \
-                                                || memcmp(binary_version, board_id_mb_2_0_hex, sizeof(binary_version)) == 0){
-                                            // Exit only if EOF from the correct binary
-                                            if (metadata_header_found == 0){
-                                                status = HEX_PARSE_EOF;
-                                                goto hex_parser_exit;
-                                            }
-                                            else{
-                                                metadata_header_found = 0;
-                                            }
-                                        }
-                                        break;
+                                        status = HEX_PARSE_EOF;
+                                        goto hex_parser_exit;
 
                                     case EXT_SEG_ADDR_RECORD:
                                         // Could have had data in the buffer so must exit and try to program
