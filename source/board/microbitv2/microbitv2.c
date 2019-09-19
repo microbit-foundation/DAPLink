@@ -35,6 +35,7 @@
 #endif
 
 const char * const board_id_mb_2_0 = "9903";
+const uint16_t board_id_hex = 0x9903;
 
 extern target_cfg_t target_device_nrf52;
 extern main_usb_connect_t usb_state;
