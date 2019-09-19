@@ -84,6 +84,6 @@ uint8_t validate_hexfile(const uint8_t *buf)
     } else {
         // look here for known hex records
         // add hex identifier b[0] == ':' && b[8] == {'0', '2', '3', '4', '5'}
-        return ((buf[0] == ':') && ((buf[8] == '0') || (buf[8] == '2') || (buf[8] == '3') || (buf[8] == '4') || (buf[8] == '5'))) ? 1 : 0;
+        return ((buf[0] == ':') && ((buf[8] == '0') || (buf[8] == '2') || (buf[8] == '3') || (buf[8] == '4') || (buf[8] == '5') || (buf[8] == 'A'))) ? 1 : 0;
     }
 }
