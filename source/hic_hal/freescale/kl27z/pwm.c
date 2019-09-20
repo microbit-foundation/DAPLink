@@ -24,6 +24,14 @@
 
 #define TPM_SOURCE_CLOCK CLOCK_GetFreq(kCLOCK_McgIrc48MClk)
 
+#define PIN_RED_CH_NUMBER        1
+
+#define RED_LED_PWM_FREQ_HZ      2000
+
+// PWM settings for the board
+#define BOARD_TPM_BASEADDR  TPM2
+#define BOARD_TPM_CHANNEL   1
+#define TPM_LED_ON_LEVEL    kTPM_HighTrue
 
 void pwm_set_mux(uint8_t mux);
 

@@ -23,7 +23,7 @@
 #include "DAP.h"
 #include "target_family.h"
 #include "target_board.h"
-#include "pwm.h"
+#include "flexio_pwm.h"
 #include "gpio.h"
 #include "power.h"
 #include "rl_usb.h" 
@@ -69,15 +69,15 @@ static void prerun_board_config(void)
 
     battery_powered = pwr_mon_battery_powered();
 
-    pwm_init();
-    pwm_init_pins();
+    flexio_pwm_init();
+    flexio_pwm_init_pins();
     
     if (battery_powered == true){
         // Turn on the red LED
-        pwm_set_dutycycle(100);
+        flexio_pwm_set_dutycycle(100);
     } else {
         // Turn off the red LED
-        pwm_set_dutycycle(0);       
+        flexio_pwm_set_dutycycle(0);       
     }
 
     power_init();
@@ -198,7 +198,7 @@ void board_30ms_hook()
         default:
             break;
         }
-        pwm_set_dutycycle(shutdown_led_dc);
+        flexio_pwm_set_dutycycle(shutdown_led_dc);
     }
 }
 
