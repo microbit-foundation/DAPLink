@@ -34,6 +34,9 @@
 #include "flash_intf.h"
 #endif
 
+#define M0_RESERVED_VECT_OFFSET     (4 * 4)
+#define M0_RESERVED_VECT_SIZE       (3 * 4) // Size for mem fault, bus fault and usage fault vectors
+
 const char * const board_id_mb_2_0 = "9903";
 const uint16_t board_id_hex = 0x9903;
 
@@ -216,6 +219,17 @@ void board_handle_powerdown()
     }
     
     usbd_connect(1);
+}
+
+uint8_t board_detect_incompatible_image(const uint8_t *data, uint32_t size)
+{
+    uint8_t result = 0;
+    
+    // Check difference in vectors (mem fault, bus fault, usage fault)
+    // If these vectors are 0, we assume it's an M0 image (not compatible)
+    result = memcmp(data + M0_RESERVED_VECT_OFFSET, (uint8_t[M0_RESERVED_VECT_SIZE]){0}, M0_RESERVED_VECT_SIZE);
+    
+    return result == 0;
 }
 
 // USB HID override function return 1 if the activity is trivial or response is null
