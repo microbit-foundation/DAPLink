@@ -98,8 +98,8 @@ __Vectors       DCD     __initial_sp  ; Top of Stack
                 DCD     FTFA_IRQHandler                     ;Command complete and read collision
                 DCD     PMC_IRQHandler                      ;Low-voltage detect, low-voltage warning
                 DCD     LLWU_IRQHandler                     ;Low leakage wakeup
-                DCD     I2C0_IRQHandler                     ;I2C0 interrupt
-                DCD     I2C1_IRQHandler                     ;I2C1 interrupt
+                DCD     I2C0_DriverIRQHandler               ;I2C0 interrupt
+                DCD     I2C1_DriverIRQHandler               ;I2C1 interrupt
                 DCD     SPI0_IRQHandler                     ;SPI0 single interrupt vector for all sources
                 DCD     SPI1_IRQHandler                     ;SPI1 single interrupt vector for all sources
                 DCD     LPUART0_IRQHandler                  ;LPUART0 status and error
@@ -320,8 +320,8 @@ Default_Handler\
                 EXPORT  FTFA_IRQHandler         [WEAK]
                 EXPORT  PMC_IRQHandler         [WEAK]
                 EXPORT  LLWU_IRQHandler         [WEAK]
-                EXPORT  I2C0_IRQHandler         [WEAK]
-                EXPORT  I2C1_IRQHandler         [WEAK]
+                EXPORT  I2C0_DriverIRQHandler   [WEAK]
+                EXPORT  I2C1_DriverIRQHandler   [WEAK]
                 EXPORT  SPI0_IRQHandler         [WEAK]
                 EXPORT  SPI1_IRQHandler         [WEAK]
                 EXPORT  LPUART0_IRQHandler         [WEAK]
@@ -353,8 +353,8 @@ Reserved20_IRQHandler
 FTFA_IRQHandler
 PMC_IRQHandler
 LLWU_IRQHandler
-I2C0_IRQHandler
-I2C1_IRQHandler
+I2C0_DriverIRQHandler
+I2C1_DriverIRQHandler
 SPI0_IRQHandler
 SPI1_IRQHandler
 LPUART0_IRQHandler
