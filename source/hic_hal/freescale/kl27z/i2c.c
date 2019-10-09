@@ -81,7 +81,9 @@ static void i2c_slave_callback(I2C_Type *base, i2c_slave_transfer_t *xfer, void 
             } else {
                 if (config_get_overflow_detect()) { // Overflow detection enabled
                     // Write only the data that fits and drop newest
-                    circ_buf_write(&i2c_read_buffer, &g_slave_buff[2], free - RX_OVRF_MSG_SIZE);
+                    if (free > RX_OVRF_MSG_SIZE) {
+                        circ_buf_write(&i2c_read_buffer, &g_slave_buff[2], free - RX_OVRF_MSG_SIZE);
+                    }
                     circ_buf_write(&i2c_read_buffer, (uint8_t*) RX_OVRF_MSG, RX_OVRF_MSG_SIZE);
                 } else { // Overflow detection not enabled
                     // Write whatever fits in the buffer and drop newest
@@ -195,7 +197,9 @@ int32_t i2c_write_data(uint8_t *data, uint16_t size)
     } else {
         if (config_get_overflow_detect()) { // Overflow detection enabled
             // Write only the data that fits and drop newest
-            cnt = circ_buf_write(&i2c_write_buffer, data, free - RX_OVRF_MSG_SIZE);
+            if (free > RX_OVRF_MSG_SIZE) {
+                cnt = circ_buf_write(&i2c_write_buffer, data, free - RX_OVRF_MSG_SIZE);
+            }
             cnt += circ_buf_write(&i2c_write_buffer, (uint8_t*) RX_OVRF_MSG, RX_OVRF_MSG_SIZE);
         } else { // Overflow detection not enabled
             // Write whatever fits in the buffer and drop newest
