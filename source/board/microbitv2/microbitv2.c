@@ -216,6 +216,8 @@ void board_handle_powerdown()
     }
     
     usbd_connect(1);
+    
+    gpio_set_hid_led(HID_LED_DEF);
 }
 
 // USB HID override function return 1 if the activity is trivial or response is null

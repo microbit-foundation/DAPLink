@@ -27,6 +27,7 @@
 #include "IO_Config.h"
 #include "circ_buf.h"
 #include "settings.h" // for config_get_overflow_detect
+#include "fsl_clock.h"
 
 #define RX_OVRF_MSG         "<DAPLink:Overflow>\n"
 #define RX_OVRF_MSG_SIZE    (sizeof(RX_OVRF_MSG) - 1)
@@ -67,13 +68,13 @@ int32_t uart_initialize(void)
 
     // enable clk uart
     if (0 == UART_NUM) {
-        SIM->SOPT2 = ((SIM->SOPT2 & ~SIM_SOPT2_LPUART0SRC_MASK) | SIM_SOPT2_LPUART0SRC(0x1));
-        SIM->SCGC5 |= SIM_SCGC5_LPUART0_MASK;
+        CLOCK_SetLpuart0Clock(1);
+        CLOCK_EnableClock(kCLOCK_Lpuart0);
     }
     
     if (1 == UART_NUM) {
-        SIM->SOPT2 = ((SIM->SOPT2 & ~SIM_SOPT2_LPUART1SRC_MASK) | SIM_SOPT2_LPUART1SRC(0x1));
-        SIM->SCGC5 |= SIM_SCGC5_LPUART1_MASK;
+        CLOCK_SetLpuart1Clock(1);
+        CLOCK_EnableClock(kCLOCK_Lpuart1);
     }
     
 
@@ -103,6 +104,15 @@ int32_t uart_uninitialize(void)
     // disable interrupt
     UART->CTRL &= ~(LPUART_CTRL_RIE_MASK | LPUART_CTRL_TIE_MASK | LPUART_CTRL_ORIE_MASK);
     clear_buffers();
+
+    // disable uart clock
+    if (0 == UART_NUM) {
+        CLOCK_DisableClock(kCLOCK_Lpuart0);
+    }
+
+    if (1 == UART_NUM) {
+        CLOCK_DisableClock(kCLOCK_Lpuart1);
+    }
     return 1;
 }
 
