@@ -61,10 +61,19 @@ void flexio_pwm_set_dutycycle(uint8_t duty)
     if (duty > 99)
     {
         duty = 99;
+        PIN_RED_LED_GPIO->PDDR |= PIN_RED_LED;
+        PIN_RED_LED_GPIO->PSOR = PIN_RED_LED;
+        PORT_SetPinMux(PIN_RED_LED_PORT, PIN_RED_LED_BIT, kPORT_MuxAsGpio);
     }
     else if (duty == 0)
     {
         duty = 1;
+        PIN_RED_LED_GPIO->PDDR |= PIN_RED_LED;
+        PIN_RED_LED_GPIO->PCOR = PIN_RED_LED;
+        PORT_SetPinMux(PIN_RED_LED_PORT, PIN_RED_LED_BIT, kPORT_MuxAsGpio);
+    }
+    else {
+        flexio_pwm_init_pins();
     }
 
     /* Configure the timer DEMO_FLEXIO_TIMER_CH for generating PWM */
