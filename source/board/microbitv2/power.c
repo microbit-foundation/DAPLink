@@ -125,11 +125,11 @@ static void power_mode_switch(smc_power_state_t curPowerState, app_power_mode_t 
 
 static void power_pre_switch_hook(smc_power_state_t originPowerState, app_power_mode_t targetMode)
 {
-    /* Wait for debug console output finished. */
-    while (!(LPUART_STAT_TC_MASK & UART->STAT))
-    {
-    }
-    uart_uninitialize();
+//    /* Wait for debug console output finished. */
+//    while (!(LPUART_STAT_TC_MASK & UART->STAT))
+//    {
+//    }
+//    uart_uninitialize();
 
     /*
      * Set pin for current leakage.
@@ -151,5 +151,5 @@ static void power_post_switch_hook(smc_power_state_t originPowerState, app_power
     PORT_SetPinMux(PIN_RED_LED_PORT, PIN_RED_LED_BIT, kPORT_MuxAlt3);
     PORT_SetPinMux(PIN_HID_LED_PORT, PIN_HID_LED_BIT, kPORT_MuxAsGpio);
 
-	uart_initialize();
+//	uart_initialize();
 }
