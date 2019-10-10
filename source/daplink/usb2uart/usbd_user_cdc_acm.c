@@ -31,41 +31,6 @@
 
 UART_Configuration UART_Config;
 
-__attribute__((weak)) int32_t serial_initialize(void)
-{
-    return uart_initialize();
-}
-
-__attribute__((weak)) int32_t serial_uninitialize(void)
-{
-    return uart_uninitialize();
-}
-
-__attribute__((weak)) int32_t serial_reset(void)
-{
-    return uart_reset();
-}
-
-__attribute__((weak)) int32_t serial_set_configuration(void *config)
-{
-    return uart_set_configuration(config);
-}
-
-__attribute__((weak)) int32_t serial_write_free(void)
-{
-    return uart_write_free();
-}
-
-__attribute__((weak)) int32_t serial_write_data(uint8_t *data, uint16_t size)
-{
-    return uart_write_data(data, size);
-}
-
-__attribute__((weak)) int32_t serial_read_data(uint8_t *data, uint16_t size)
-{
-    return uart_read_data(data, size);
-}
-
 /** @brief  Vitual COM Port initialization
  *
  *  The function inititalizes the hardware resources of the port used as
@@ -76,7 +41,7 @@ __attribute__((weak)) int32_t serial_read_data(uint8_t *data, uint16_t size)
  */
 int32_t USBD_CDC_ACM_PortInitialize(void)
 {
-    serial_initialize();
+    uart_initialize();
     main_cdc_send_event();
     return 1;
 }
@@ -91,7 +56,7 @@ int32_t USBD_CDC_ACM_PortInitialize(void)
  */
 int32_t USBD_CDC_ACM_PortUninitialize(void)
 {
-    serial_uninitialize();
+    uart_uninitialize();
     return 1;
 }
 
@@ -105,7 +70,7 @@ int32_t USBD_CDC_ACM_PortUninitialize(void)
  */
 int32_t USBD_CDC_ACM_PortReset(void)
 {
-    serial_reset();
+    uart_reset();
     return 1;
 }
 
@@ -125,7 +90,7 @@ int32_t USBD_CDC_ACM_PortSetLineCoding(CDC_LINE_CODING *line_coding)
     UART_Config.Parity      = (UART_Parity)   line_coding->bParityType;
     UART_Config.StopBits    = (UART_StopBits) line_coding->bCharFormat;
     UART_Config.FlowControl = UART_FLOW_CONTROL_NONE;
-    return serial_set_configuration(&UART_Config);
+    return uart_set_configuration(&UART_Config);
 }
 
 /** @brief  Vitual COM Port retrieve communication settings
@@ -199,7 +164,7 @@ void cdc_process_event()
     }
 
     if (len_data) {
-        len_data = serial_read_data(data, len_data);
+        len_data = uart_read_data(data, len_data);
     }
 
     if (len_data) {
@@ -208,7 +173,7 @@ void cdc_process_event()
         }
     }
 
-    len_data = serial_write_free();
+    len_data = uart_write_free();
 
     if (len_data > sizeof(data)) {
         len_data = sizeof(data);
@@ -219,7 +184,7 @@ void cdc_process_event()
     }
 
     if (len_data) {
-        if (serial_write_data(data, len_data)) {
+        if (uart_write_data(data, len_data)) {
             main_blink_cdc_led(MAIN_LED_FLASH);
         }
     }
