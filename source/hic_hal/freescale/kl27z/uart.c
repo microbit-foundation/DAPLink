@@ -265,6 +265,8 @@ void UART_RX_TX_IRQHandler(void)
     if (s1 & LPUART_STAT_RDRF_MASK) {
         if ((s1 & LPUART_STAT_NF_MASK) || (s1 & LPUART_STAT_FE_MASK)) {
             errorData = UART->DATA;
+            // Clear frame error or Noise flags
+            UART->STAT = ((UART->STAT & 0x3FE00000U) | LPUART_STAT_NF_MASK | LPUART_STAT_FE_MASK);
         } else {
             uint32_t free;
             uint8_t data;        
