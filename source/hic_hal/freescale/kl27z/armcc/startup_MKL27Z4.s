@@ -126,6 +126,35 @@ __Vectors_End
 
 __Vectors_Size 	EQU     __Vectors_End - __Vectors
 
+; Bootloader Configuration Area (BCA) used by Kinetis ROM Bootloader
+#if defined(DAPLINK_BL)
+    AREA    |.ARM.__at_0x3C0 |, CODE, READONLY
+                          ; Offset  Description
+    DCD     0x6766636B    ; 0x00    Magic number to verify bootloader configuration is valid. Must be set to 'kcfg'.
+    DCD     0xFFFFFFFF    ; 0x04    Reserved
+    DCD     0xFFFFFFFF    ; 0x08    Reserved
+    DCD     0xFFFFFFFF    ; 0x0C    Reserved
+    DCB     0x10          ; 0x10    Bitfield of peripherals to enable. bit 0 LPUART, bit 1 I2C, bit 2 SPI, bit 4 USB. 0x10 = USB only
+    DCB     0xFF          ; 0x11    i2cSlaveAddress
+    DCB     0xFF, 0xFF    ; 0x12    peripheralDetectionTimeout
+    DCB     0xFF, 0xFF    ; 0x14    usbVid
+    DCB     0xFF, 0xFF    ; 0x16    usbPid
+    DCD     0xFFFFFFFF    ; 0x18    usbStringsPointer
+    DCB     0xFF          ; 0x1C    clockFlags
+    DCB     0xFF          ; 0x1D    clockDivider
+    DCB     0xFF          ; 0x1E    bootFlags
+    DCB     0xFF          ; 0x1F    pad byte
+    DCD     0xFFFFFFFF    ; 0x20    Reserved
+    DCD     0xFFFFFFFF    ; 0x24    Reserved
+    DCD     0xFFFFFFFF    ; 0x28    Reserved
+    DCD     0xFFFFFFFF    ; 0x2C    Reserved
+    DCD     0xFFFFFFFF    ; 0x30    Reserved
+    DCD     0xFFFFFFFF    ; 0x34    Reserved
+    DCD     0xFFFFFFFF    ; 0x38    Reserved
+    DCD     0xFFFFFFFF    ; 0x3C    Reserved
+
+#endif
+
 ; <h> Flash Configuration
 ;   <i> 16-byte flash configuration field that stores default protection settings (loaded on reset)
 ;   <i> and security information that allows the MCU to restrict access to the FTFL module.
