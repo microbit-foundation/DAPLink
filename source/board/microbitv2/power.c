@@ -27,12 +27,19 @@ static void power_enter_mode(app_power_mode_t targetPowerMode);
  ******************************************************************************/
 void LLWU_IRQHandler(void)
 {
-    /* If wakeup by external pin. */
+    /* If wakeup by external pin BTN_NOT_PRESSED. */
     if (LLWU_GetExternalWakeupPinFlag(LLWU, PIN_SW_RESET_LLWU_PIN))
     {
         PORT_SetPinInterruptConfig(PIN_SW_RESET_PORT, PIN_SW_RESET_BIT, kPORT_InterruptOrDMADisabled);
         PORT_ClearPinsInterruptFlags(PIN_SW_RESET_PORT, (1U << PIN_SW_RESET_BIT));
         LLWU_ClearExternalWakeupPinFlag(LLWU, PIN_SW_RESET_LLWU_PIN);
+    }
+    /* If wakeup by external pin WAKE_ON_EDGE. */
+    if (LLWU_GetExternalWakeupPinFlag(LLWU, PIN_WAKE_ON_EDGE_LLWU_PIN))
+    {
+        PORT_SetPinInterruptConfig(PIN_WAKE_ON_EDGE_PORT, PIN_WAKE_ON_EDGE_BIT, kPORT_InterruptOrDMADisabled);
+        PORT_ClearPinsInterruptFlags(PIN_WAKE_ON_EDGE_PORT, (1U << PIN_WAKE_ON_EDGE_BIT));
+        LLWU_ClearExternalWakeupPinFlag(LLWU, PIN_WAKE_ON_EDGE_LLWU_PIN);
     }
 }
 
@@ -43,6 +50,12 @@ void PORTCD_IRQHandler(void)
         /* Disable interrupt. */
         PORT_SetPinInterruptConfig(PIN_SW_RESET_PORT, PIN_SW_RESET_BIT, kPORT_InterruptOrDMADisabled);
         PORT_ClearPinsInterruptFlags(PIN_SW_RESET_PORT, (1U << PIN_SW_RESET_BIT));
+    }
+    if ((1U << PIN_WAKE_ON_EDGE_BIT) & PORT_GetPinsInterruptFlags(PIN_WAKE_ON_EDGE_PORT))
+    {
+        /* Disable interrupt. */
+        PORT_SetPinInterruptConfig(PIN_WAKE_ON_EDGE_PORT, PIN_WAKE_ON_EDGE_BIT, kPORT_InterruptOrDMADisabled);
+        PORT_ClearPinsInterruptFlags(PIN_WAKE_ON_EDGE_PORT, (1U << PIN_WAKE_ON_EDGE_BIT));
     }
 }
 
@@ -87,13 +100,15 @@ static void power_enter_mode(app_power_mode_t targetPowerMode)
 
 static void power_set_wakeup_config(app_power_mode_t targetMode)
 {
-	PORT_SetPinInterruptConfig(PIN_SW_RESET_PORT, PIN_SW_RESET_BIT, PIN_SW_RESET_PORT_WAKEUP_TYPE);
+    PORT_SetPinInterruptConfig(PIN_SW_RESET_PORT, PIN_SW_RESET_BIT, PIN_SW_RESET_PORT_WAKEUP_TYPE);
+    PORT_SetPinInterruptConfig(PIN_WAKE_ON_EDGE_PORT, PIN_WAKE_ON_EDGE_BIT, PIN_WAKE_ON_EDGE_PORT_WAKEUP_TYPE);
 
     /* If targetMode is VLLS/LLS, setup LLWU. */
     if ((kAPP_PowerModeWait != targetMode) && (kAPP_PowerModeVlpw != targetMode) &&
         (kAPP_PowerModeVlps != targetMode) && (kAPP_PowerModeStop != targetMode))
     {
         LLWU_SetExternalWakeupPinMode(LLWU, PIN_SW_RESET_LLWU_PIN, PIN_SW_RESET_LLWU_WAKEUP_TYPE);
+        LLWU_SetExternalWakeupPinMode(LLWU, PIN_WAKE_ON_EDGE_LLWU_PIN, PIN_WAKE_ON_EDGE_LLWU_WAKEUP_TYPE);
         NVIC_EnableIRQ(LLWU_IRQn);
     }
 }
