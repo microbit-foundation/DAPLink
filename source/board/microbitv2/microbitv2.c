@@ -73,11 +73,11 @@ static void prerun_board_config(void)
     flexio_pwm_init_pins();
     
     if (battery_powered == true){
-        // Turn on the red LED
+        // Turn on the red LED. TODO. Lower duty cycle to save power?
         flexio_pwm_set_dutycycle(100);
     } else {
-        // Turn off the red LED
-        flexio_pwm_set_dutycycle(0);       
+        // Turn on the red LED when powered by USB or EC
+        flexio_pwm_set_dutycycle(100);       
     }
 
     power_init();
@@ -144,62 +144,76 @@ void handle_reset_button()
 
 void board_30ms_hook()
 {
-    // need to define battery powered and set it someplace
-    if (battery_powered == true || usb_state == USB_DISCONNECTED) {
-        switch (main_shutdown_state) {
-        case MAIN_SHUTDOWN_CANCEL:
-            main_shutdown_state = MAIN_SHUTDOWN_WAITING;
-            // Set the PWM value back to 100%
-            shutdown_led_dc = 100;
-            break;
-        case MAIN_SHUTDOWN_PENDING:
-            // Fade the PWM until the board is about to be shut down
-            if (shutdown_led_dc > 0) {
-                shutdown_led_dc--;
-            }
-            break;
-        case MAIN_SHUTDOWN_1_REACHED:
-            // Blink the LED to indicate we are waiting for release
-            if (shutdown_led_dc < 10) {
-                shutdown_led_dc++;
-            } else if (shutdown_led_dc == 10) {
-                shutdown_led_dc = 100;
-            } else if (shutdown_led_dc <= 90) {
-                shutdown_led_dc = 0;
-            } else if (shutdown_led_dc > 90) {
-                shutdown_led_dc--;
-            }
-            break;
-        case MAIN_SHUTDOWN_2_REACHED:
-            // Blink the LED to indicate we are waiting for release
-            if (shutdown_led_dc < 10) {
-                shutdown_led_dc += 2;
-            } else if (shutdown_led_dc == 10) {
-                shutdown_led_dc = 100;
-            } else if (shutdown_led_dc <= 90) {
-                shutdown_led_dc = 0;
-            } else if (shutdown_led_dc > 90) {
-                shutdown_led_dc -= 2;
-            }
-            break;
-        case MAIN_SHUTDOWN_1_REQUESTED:
-            interface_power_mode = kAPP_PowerModeVlps;
-            main_powerdown_event();
-            main_shutdown_state = MAIN_SHUTDOWN_WAITING;
-            break;
-        case MAIN_SHUTDOWN_2_REQUESTED:
-            interface_power_mode = kAPP_PowerModeVlls0;
-            main_powerdown_event();
-            main_shutdown_state = MAIN_SHUTDOWN_WAITING;
-            break;
-        case MAIN_SHUTDOWN_WAITING:
-            // Set the PWM value back to 100%
-            shutdown_led_dc = 100;
-        default:
-            break;
-        }
-        flexio_pwm_set_dutycycle(shutdown_led_dc);
+    if (usb_state == USB_CONNECTED) {
+      // configure pin as GPIO
+      PIN_HID_LED_PORT->PCR[PIN_HID_LED_BIT] = PORT_PCR_MUX(1);
+      PIN_MSC_LED_PORT->PCR[PIN_MSC_LED_BIT] = PORT_PCR_MUX(1);
+      PIN_CDC_LED_PORT->PCR[PIN_CDC_LED_BIT] = PORT_PCR_MUX(1);
     }
+    else if (usb_state == USB_DISCONNECTED) {
+      // Disable pin
+      PIN_HID_LED_PORT->PCR[PIN_HID_LED_BIT] = PORT_PCR_MUX(0);
+      PIN_MSC_LED_PORT->PCR[PIN_MSC_LED_BIT] = PORT_PCR_MUX(0);
+      PIN_CDC_LED_PORT->PCR[PIN_CDC_LED_BIT] = PORT_PCR_MUX(0);
+    }
+
+    switch (main_shutdown_state) {
+      case MAIN_SHUTDOWN_CANCEL:
+          main_shutdown_state = MAIN_SHUTDOWN_WAITING;
+          // Set the PWM value back to 100%
+          shutdown_led_dc = 100;
+          break;
+      case MAIN_SHUTDOWN_PENDING:
+          // Fade the PWM until the board is about to be shut down
+          if (shutdown_led_dc > 0) {
+              shutdown_led_dc--;
+          }
+          break;
+      case MAIN_SHUTDOWN_1_REACHED:
+          // Blink the LED to indicate we are waiting for release
+          if (shutdown_led_dc < 10) {
+              shutdown_led_dc++;
+          } else if (shutdown_led_dc == 10) {
+              shutdown_led_dc = 100;
+          } else if (shutdown_led_dc <= 90) {
+              shutdown_led_dc = 0;
+          } else if (shutdown_led_dc > 90) {
+              shutdown_led_dc--;
+          }
+          break;
+      case MAIN_SHUTDOWN_2_REACHED:
+          // Blink the LED to indicate we are waiting for release
+          if (shutdown_led_dc < 10) {
+              shutdown_led_dc += 2;
+          } else if (shutdown_led_dc == 10) {
+              shutdown_led_dc = 100;
+          } else if (shutdown_led_dc <= 90) {
+              shutdown_led_dc = 0;
+          } else if (shutdown_led_dc > 90) {
+              shutdown_led_dc -= 2;
+          }
+          break;
+      case MAIN_SHUTDOWN_1_REQUESTED:
+          if (battery_powered == true || usb_state == USB_DISCONNECTED) {
+              interface_power_mode = kAPP_PowerModeVlps;
+              main_powerdown_event();
+          }
+          main_shutdown_state = MAIN_SHUTDOWN_WAITING;
+          break;
+      case MAIN_SHUTDOWN_2_REQUESTED:
+          if (battery_powered == true || usb_state == USB_DISCONNECTED) {
+              interface_power_mode = kAPP_PowerModeVlls0;
+              main_powerdown_event();
+          }
+          main_shutdown_state = MAIN_SHUTDOWN_WAITING;
+          break;
+      case MAIN_SHUTDOWN_WAITING:
+          // Set the PWM value back to 100%
+          shutdown_led_dc = 100;
+      default:
+          break;
+    }
+    flexio_pwm_set_dutycycle(shutdown_led_dc);
 }
 
 void board_handle_powerdown()
