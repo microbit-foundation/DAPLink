@@ -1,5 +1,4 @@
 #include "i2c.h"
-#include "circ_buf.h"
 #include "fsl_i2c.h"
 #include "fsl_clock.h"
 #include "fsl_port.h"
@@ -10,31 +9,40 @@
 #define I2C_SLAVE_CLK_SRC I2C1_CLK_SRC
 #define I2C_SLAVE_CLK_FREQ CLOCK_GetFreq(I2C1_CLK_SRC)
 
-#define I2C_MASTER_SLAVE_ADDR_7BIT 0x7EU
+#define I2C_MASTER_SLAVE_ADDR_7BIT  0x7AU
+#define I2C_DATA_LENGTH             (32U)
 
-#define RX_OVRF_MSG         "<DAPLink:Overflow>\n"
-#define RX_OVRF_MSG_SIZE    (sizeof(RX_OVRF_MSG) - 1)
-#define BUFFER_SIZE         (32)
-#define I2C_DATA_LENGTH     (BUFFER_SIZE + 2)
+// We'll start with 5 RX commands
+#define RX_CMDS_LENGTH              5
+#define I2C_CMD_SLEEP               0xABU
 
-circ_buf_t i2c_write_buffer;
-uint8_t i2c_write_buffer_data[BUFFER_SIZE];
-circ_buf_t i2c_read_buffer;
-uint8_t i2c_read_buffer_data[BUFFER_SIZE];
+static void i2c_cmd_sleep_callback(void);
 
-uint8_t g_slave_buff[I2C_DATA_LENGTH];
+typedef struct _cmd_callback {
+    uint8_t cmdValue;
+    void (*callback)();
+} cmd_callback_t;
 
-i2c_slave_handle_t g_s_handle;
-volatile bool g_SlaveCompletionFlag = false;
+static cmd_callback_t i2cSleepCmd = {
+    .cmdValue = I2C_CMD_SLEEP,
+    .callback = i2c_cmd_sleep_callback,
+};
 
-static int32_t i2c_start_transfer(void);
+static cmd_callback_t *rx_cmds[RX_CMDS_LENGTH];
 
-static void i2c_slave_callback(I2C_Type *base, i2c_slave_transfer_t *xfer, void *userData)
-{
-    static uint8_t g_slave_temp_var = 0;
-    uint8_t size = 0;
-    uint32_t free = 0;
+static uint8_t g_slave_buff[I2C_DATA_LENGTH];
+static i2c_slave_handle_t g_s_handle;
+static volatile bool g_SlaveCompletionFlag = false;
+static volatile bool g_SlaveRxFlag = false;
 
+bool go_to_sleep = false;
+
+
+static void i2c_cmd_sleep_callback() {
+    go_to_sleep = true;
+}
+
+static void i2c_slave_callback(I2C_Type *base, i2c_slave_transfer_t *xfer, void *userData) {
     switch (xfer->event)
     {
         /*  Address match event */
@@ -45,25 +53,23 @@ static void i2c_slave_callback(I2C_Type *base, i2c_slave_transfer_t *xfer, void 
         /*  Transmit request */
         case kI2C_SlaveTransmitEvent:
             /*  Update information for transmit process */
-            size = circ_buf_count_used(&i2c_write_buffer);
-            if (NULL == xfer->data){    // Send buffer size in first byte
-                g_slave_temp_var = size;
-            } else {                    // Send data in the rest of the transfer
-                if (size > 0) { // Only pop data if there's data
-                    g_slave_temp_var = circ_buf_pop(&i2c_write_buffer);
-                } else {        // Otherwise send dummy 0's
-                    g_slave_temp_var = 0;
-                }
+            for (uint32_t i = 0U; i < I2C_DATA_LENGTH; i++) {
+                    g_slave_buff[i] = i;
             }
-            xfer->data     = &g_slave_temp_var;
-            xfer->dataSize = 1;
+            xfer->data     = g_slave_buff;
+            xfer->dataSize = I2C_DATA_LENGTH;
             break;
 
         /*  Receive request */
         case kI2C_SlaveReceiveEvent:
             /*  Update information for received process */
+            // Hack: Default driver can't differentiate between RX or TX on
+            // completion event, so we set a flag here. Can't process more
+            // than I2C_DATA_LENGTH bytes on RX
+            memset(&g_slave_buff, 0, sizeof(g_slave_buff));
             xfer->data     = g_slave_buff;
             xfer->dataSize = I2C_DATA_LENGTH;
+            g_SlaveRxFlag = true;
             break;
 
         /*  Transfer done */
@@ -71,27 +77,18 @@ static void i2c_slave_callback(I2C_Type *base, i2c_slave_transfer_t *xfer, void 
             g_SlaveCompletionFlag = true;
             xfer->data            = NULL;
             xfer->dataSize        = 0;
-
-            // Store received data
-            free = circ_buf_count_free(&i2c_read_buffer);
-
-            if (free >= g_slave_buff[1] + RX_OVRF_MSG_SIZE) {
-                // Whole slave buff fits in read buffer
-                circ_buf_write(&i2c_read_buffer, &g_slave_buff[2], g_slave_buff[1]);
-            } else {
-                if (config_get_overflow_detect()) { // Overflow detection enabled
-                    // Write only the data that fits and drop newest
-                    if (free > RX_OVRF_MSG_SIZE) {
-                        circ_buf_write(&i2c_read_buffer, &g_slave_buff[2], free - RX_OVRF_MSG_SIZE);
+            
+            // Default driver couldn't differentiate between RX or TX completion
+            // Check flag set in kI2C_SlaveReceiveEvent
+            if (g_SlaveRxFlag) {
+                // Check all registered commands
+                for (uint8_t i = 0; i < RX_CMDS_LENGTH; i++) {
+                    if (rx_cmds[i] != NULL && (g_slave_buff[0] == (rx_cmds[i])->cmdValue)) {
+                        rx_cmds[i]->callback();
                     }
-                    circ_buf_write(&i2c_read_buffer, (uint8_t*) RX_OVRF_MSG, RX_OVRF_MSG_SIZE);
-                } else { // Overflow detection not enabled
-                    // Write whatever fits in the buffer and drop newest
-                    circ_buf_write(&i2c_read_buffer, &g_slave_buff[2], g_slave_buff[1]);
                 }
             }
-
-            memset(&g_slave_buff, 0, sizeof(g_slave_buff));
+            g_SlaveRxFlag = false;
             break;
 
         default:
@@ -100,14 +97,7 @@ static void i2c_slave_callback(I2C_Type *base, i2c_slave_transfer_t *xfer, void 
     }
 }
 
-static void clear_buffers(void)
-{
-    circ_buf_init(&i2c_write_buffer, i2c_write_buffer_data, sizeof(i2c_write_buffer_data));
-    circ_buf_init(&i2c_read_buffer, i2c_read_buffer_data, sizeof(i2c_read_buffer_data));
-}
-
-static void i2c_init_pins(void)
-{
+static void i2c_init_pins(void) {
     /* Port C Clock Gate Control: Clock enabled */
     CLOCK_EnableClock(kCLOCK_PortC);
 
@@ -132,34 +122,7 @@ static void i2c_init_pins(void)
                      | (uint32_t)(PORT_PCR_PE_MASK));
 }
 
-int32_t i2c_initialize(void)
-{
-    i2c_slave_config_t slaveConfig;
-
-    i2c_init_pins();
-
-    clear_buffers();
-
-    I2C_SlaveGetDefaultConfig(&slaveConfig);
-
-    slaveConfig.addressingMode = kI2C_Address7bit;
-    slaveConfig.slaveAddress   = I2C_MASTER_SLAVE_ADDR_7BIT;
-
-    I2C_SlaveInit(I2C_SLAVE_BASEADDR, &slaveConfig, I2C_SLAVE_CLK_FREQ);
-
-    i2c_start_transfer();
-
-    return 1;
-}
-
-int32_t i2c_deinitialize(void)
-{
-    I2C_SlaveDeinit(I2C_SLAVE_BASEADDR);
-    return 1;
-}
-
-static int32_t i2c_start_transfer(void)
-{
+static int32_t i2c_start_transfer(void) {
     memset(&g_slave_buff, 0, sizeof(g_slave_buff));
     memset(&g_s_handle, 0, sizeof(g_s_handle));
 
@@ -173,44 +136,38 @@ static int32_t i2c_start_transfer(void)
     return 1;
 }
 
-int32_t i2c_reset(void)
-{
-    clear_buffers();
+static status_t i2c_slave_register_cmd_callback(cmd_callback_t *cmdCalback) {
+    for (uint8_t i = 0; i < RX_CMDS_LENGTH; i++) {
+        if (rx_cmds[i] == NULL) {
+            rx_cmds[i] = cmdCalback;
+            return kStatus_Success;
+        }
+    }
+    return kStatus_Fail;
+}
+
+int32_t i2c_initialize(void) {
+    i2c_slave_config_t slaveConfig;
+    
+    i2c_init_pins();
+
+    status_t cmd_register_status = i2c_slave_register_cmd_callback(&i2cSleepCmd);
+
+    I2C_SlaveGetDefaultConfig(&slaveConfig);
+
+    slaveConfig.addressingMode = kI2C_Address7bit;
+    slaveConfig.slaveAddress   = I2C_MASTER_SLAVE_ADDR_7BIT;
+    slaveConfig.enableWakeUp   = true;
+
+    I2C_SlaveInit(I2C_SLAVE_BASEADDR, &slaveConfig, I2C_SLAVE_CLK_FREQ);
+
+    i2c_start_transfer();
+
     return 1;
 }
 
-int32_t i2c_write_free(void)
-{
-    return circ_buf_count_free(&i2c_write_buffer);
+int32_t i2c_deinitialize(void) {
+    I2C_SlaveDeinit(I2C_SLAVE_BASEADDR);
+    return 1;
 }
 
-int32_t i2c_write_data(uint8_t *data, uint16_t size)
-{
-    uint32_t free = 0;
-    uint32_t cnt = 0;
-
-    free = circ_buf_count_free(&i2c_write_buffer);
-
-    if (free >= size + RX_OVRF_MSG_SIZE) {
-        // Whole slave buff fits in write buffer
-        cnt = circ_buf_write(&i2c_write_buffer, data, size);
-    } else {
-        if (config_get_overflow_detect()) { // Overflow detection enabled
-            // Write only the data that fits and drop newest
-            if (free > RX_OVRF_MSG_SIZE) {
-                cnt = circ_buf_write(&i2c_write_buffer, data, free - RX_OVRF_MSG_SIZE);
-            }
-            cnt += circ_buf_write(&i2c_write_buffer, (uint8_t*) RX_OVRF_MSG, RX_OVRF_MSG_SIZE);
-        } else { // Overflow detection not enabled
-            // Write whatever fits in the buffer and drop newest
-            cnt = circ_buf_write(&i2c_write_buffer, data, size);
-        }
-    }
-
-    return cnt;
-}
-
-int32_t i2c_read_data(uint8_t *data, uint16_t size)
-{
-    return circ_buf_read(&i2c_read_buffer, data, size);
-}

@@ -29,6 +29,7 @@
 #include "rl_usb.h" 
 #include "pwr_mon.h"
 #include "main.h"
+#include "i2c.h"
 
 #ifdef DRAG_N_DROP_SUPPORT
 #include "flash_intf.h"
@@ -39,6 +40,7 @@ const uint16_t board_id_hex = 0x9903;
 
 extern target_cfg_t target_device_nrf52_64;
 extern main_usb_connect_t usb_state;
+extern bool go_to_sleep;
 
 typedef enum main_shutdown_state {
     MAIN_SHUTDOWN_WAITING = 0,
@@ -81,6 +83,8 @@ static void prerun_board_config(void)
     }
 
     power_init();
+    
+    i2c_initialize();
 }
 
 // Handle the reset button behavior, this function is called in the main task every 30ms
@@ -144,6 +148,11 @@ void handle_reset_button()
 
 void board_30ms_hook()
 {
+    if (go_to_sleep) {
+        go_to_sleep = false;
+        main_shutdown_state = MAIN_SHUTDOWN_1_REQUESTED;
+    }
+    
     if (usb_state == USB_CONNECTED) {
       // configure pin as GPIO
       PIN_HID_LED_PORT->PCR[PIN_HID_LED_BIT] = PORT_PCR_MUX(1);
@@ -228,6 +237,9 @@ void board_handle_powerdown()
         default:
             break;
     }
+    
+    i2c_deinitialize();
+    i2c_initialize();
     
     usbd_connect(1);
     
