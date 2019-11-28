@@ -369,6 +369,12 @@ void main_task(void * arg)
 
                 case USB_CONNECTED:
                 case USB_DISCONNECTED:
+                if (usbd_configured()) {
+                    usb_state = USB_CONNECTED;
+                }
+                else {
+                    usb_state = USB_DISCONNECTED;
+                }
                 default:
                     break;
             }
