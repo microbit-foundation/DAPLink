@@ -62,6 +62,7 @@ typedef enum main_shutdown_state {
     MAIN_SHUTDOWN_1_REQUESTED,
     MAIN_SHUTDOWN_2_REACHED,
     MAIN_SHUTDOWN_2_REQUESTED,
+    MAIN_LED_BLINK,
     MAIN_SHUTDOWN_CANCEL
 } main_shutdown_state_t;
 
@@ -175,6 +176,7 @@ void handle_reset_button()
 
         if (gpio_reset_count <= RESET_SHORT_PRESS) {
             target_set_state(RESET_RUN);
+            main_shutdown_state = MAIN_LED_BLINK;
         }
         else if (gpio_reset_count < RESET_LONG_PRESS) {
             // Indicate button has been released to stop to cancel the shutdown
@@ -212,6 +214,9 @@ void handle_reset_button()
 
 void board_30ms_hook()
 {
+  static uint8_t temp_led_dc = 0;
+  static bool blink_in_progress = false;
+  
     if (go_to_sleep) {
         go_to_sleep = false;
         main_shutdown_state = MAIN_SHUTDOWN_1_REQUESTED;
@@ -283,6 +288,19 @@ void board_30ms_hook()
       case MAIN_SHUTDOWN_WAITING:
           // Set the PWM value back to 100%
           shutdown_led_dc = 100;
+          break;
+      case MAIN_LED_BLINK:
+          temp_led_dc = shutdown_led_dc;
+          shutdown_led_dc = 0;
+          
+          if (blink_in_progress) {
+            shutdown_led_dc = temp_led_dc;
+            blink_in_progress = false;
+            main_shutdown_state = MAIN_SHUTDOWN_WAITING;
+          } else {
+            blink_in_progress = true;
+          }
+          break;
       default:
           break;
     }
