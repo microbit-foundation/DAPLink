@@ -30,6 +30,7 @@
 #include "pwr_mon.h"
 #include "main.h"
 #include "i2c.h"
+#include "adc.h"
 
 #ifdef DRAG_N_DROP_SUPPORT
 #include "flash_intf.h"
@@ -38,8 +39,17 @@
 #define M0_RESERVED_VECT_OFFSET     (4 * 4)
 #define M0_RESERVED_VECT_SIZE       (3 * 4) // Size for mem fault, bus fault and usage fault vectors
 
+#define BRD_REV_ID_MB_2_0_VOLTAGE     3100  // 2.5V with 12bit conversion and 3.3V reference
+#define BRD_REV_ID_VOLTAGE_TOLERANCE  50    // +-40mV tolerance (3.3V ref)
+
 const char * const board_id_mb_2_0 = "9903";
-const uint16_t board_id_hex = 0x9903;
+const char * const board_id_mb_2_X = "9904";
+uint16_t board_id_hex = 0;
+
+typedef enum {
+    BOARD_VERSION_2_0 = 0,
+    BOARD_VERSION_2_X = 1,
+} mb_version_t;
 
 extern target_cfg_t target_device_nrf52_64;
 extern main_usb_connect_t usb_state;
@@ -63,12 +73,63 @@ static uint8_t shutdown_led_dc = 100;
 static app_power_mode_t interface_power_mode;
 static bool battery_powered;
 
+// Board Rev ID detection. Reads BRD_REV_ID voltage
+// Depends on gpio_init() to have been executed already
+static mb_version_t read_brd_rev_id_pin(void) {
+    mb_version_t board_version = BOARD_VERSION_2_X;
+
+    adc_init();
+    // 1. Discharge capacitor
+    //    Drive BRD_REV_ID pin to low to discharge capacitor
+    gpio_set_brd_rev_id(GPIO_OFF);
+    //    Add a ~200us delay to allow the 100nF Cap to discharge for at least 5*RC.
+    //    3 clock cycles per loop at -O2 ARMCC optimization
+    for (uint32_t count = 3200; count > 0UL; count--);
+    // 2. Release BRD_REV_ID pin
+    //    Change pin to High-Z. Capacitor will start charging
+    PIN_BOARD_REV_ID_PORT->PCR[PIN_BOARD_REV_ID_BIT] &= ~PORT_PCR_MUX(1);
+    // 3. Wait a fixed amount of time
+    //    Add a ~100us delay to allow the capacitor to charge
+    for (uint32_t count = 1600; count > 0UL; count--); 
+    // 4. Take ADC measurement
+    volatile uint32_t board_rev_id_adc = adc_read_channel(0, PIN_BOARD_REV_ID_ADC_CH, PIN_BOARD_REV_ID_ADC_MUX);
+    //    Return pin to GPIO output High. Not necessary but changes the RC curve 
+    //    to give a visual feedback to estimate where the ADC measurement was taken
+    gpio_set_brd_rev_id(GPIO_ON);
+    PIN_BOARD_REV_ID_PORT->PCR[PIN_BOARD_REV_ID_BIT] |= PORT_PCR_MUX(1);
+    
+    // Identify board ID depending on Voltage
+    if (( board_rev_id_adc >= (BRD_REV_ID_MB_2_0_VOLTAGE - BRD_REV_ID_VOLTAGE_TOLERANCE)) \
+      && ( board_rev_id_adc <= (BRD_REV_ID_MB_2_0_VOLTAGE + BRD_REV_ID_VOLTAGE_TOLERANCE))) {
+        board_version = BOARD_VERSION_2_0;
+    } else {
+        board_version = BOARD_VERSION_2_X;
+    }
+    
+    return board_version;
+}
+
+static void set_board_id(mb_version_t board_version) {
+    target_device = target_device_nrf52_64;
+    switch (board_version) {
+        case BOARD_VERSION_2_0:
+            target_device.rt_board_id = board_id_mb_2_0;
+            board_id_hex = 0x9903;
+            break;
+        case BOARD_VERSION_2_X:
+        default:
+            target_device.rt_board_id = board_id_mb_2_X;
+            board_id_hex = 0x0;
+            break;
+    }
+}
+
 // Called in main_task() to init before USB and files are configured
 static void prerun_board_config(void)
 {
-    target_device = target_device_nrf52_64;
-    target_device.rt_board_id = board_id_mb_2_0;
-
+    mb_version_t board_version = read_brd_rev_id_pin();
+    set_board_id(board_version);
+    
     // init power monitoring
     pwr_mon_init();
 

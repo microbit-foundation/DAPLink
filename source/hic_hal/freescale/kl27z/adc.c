@@ -16,7 +16,7 @@ void adc_init(void)
     adc16ConfigStruct.referenceVoltageSource     = kADC16_ReferenceVoltageSourceVref;
     adc16ConfigStruct.clockSource                = kADC16_ClockSourceAsynchronousClock;
     adc16ConfigStruct.enableAsynchronousClock    = true;
-    adc16ConfigStruct.clockDivider               = kADC16_ClockDivider8;
+    adc16ConfigStruct.clockDivider               = kADC16_ClockDivider1;
     adc16ConfigStruct.resolution                 = kADC16_ResolutionSE12Bit;
     adc16ConfigStruct.longSampleMode             = kADC16_LongSampleCycle24;
     adc16ConfigStruct.enableHighSpeed            = false;
