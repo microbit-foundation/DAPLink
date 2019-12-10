@@ -29,6 +29,9 @@ void pwr_mon_init(void)
 bool pwr_mon_battery_powered(void) {
     // Detect if device is battery powered
     gpio_set_run_vbat_sense(GPIO_ON);
+    // Add a ~3ms delay to allow the 100nF capacitors to charge to about 3*RC.
+    // 3 clock cycles per loop at -O2 ARMCC optimization
+    for (uint32_t count = 48000; count > 0UL; count--); 
     volatile uint32_t bat_adc = adc_read_channel(0, PIN_VMON_BAT_ADC_CH, PIN_VMON_BAT_ADC_MUX);
     volatile uint32_t usb_adc = adc_read_channel(0, PIN_VMON_USB_ADC_CH, PIN_VMON_USB_ADC_MUX);
     gpio_set_run_vbat_sense(GPIO_OFF);
