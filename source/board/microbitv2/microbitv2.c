@@ -40,7 +40,7 @@
 #define M0_RESERVED_VECT_SIZE       (3 * 4) // Size for mem fault, bus fault and usage fault vectors
 
 #define BRD_REV_ID_MB_2_0_VOLTAGE     3100  // 2.5V with 12bit conversion and 3.3V reference
-#define BRD_REV_ID_VOLTAGE_TOLERANCE  50    // +-40mV tolerance (3.3V ref)
+#define BRD_REV_ID_VOLTAGE_TOLERANCE  124   // +-100mV tolerance (3.3V ref)
 
 const char * const board_id_mb_2_0 = "9903";
 const char * const board_id_mb_2_X = "9904";
