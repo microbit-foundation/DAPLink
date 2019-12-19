@@ -42,6 +42,8 @@
 #define BRD_REV_ID_MB_2_0_VOLTAGE     3100  // 2.5V with 12bit conversion and 3.3V reference
 #define BRD_REV_ID_VOLTAGE_TOLERANCE  124   // +-100mV tolerance (3.3V ref)
 
+#define POWER_LED_LOW_DUTY_CYCLE      10
+
 const char * const board_id_mb_2_0 = "9903";
 const char * const board_id_mb_2_X = "9904";
 uint16_t board_id_hex = 0;
@@ -63,6 +65,7 @@ typedef enum main_shutdown_state {
     MAIN_SHUTDOWN_2_REACHED,
     MAIN_SHUTDOWN_2_REQUESTED,
     MAIN_LED_BLINK,
+    MAIN_LED_FULL_BRIGHTNESS,
     MAIN_SHUTDOWN_CANCEL
 } main_shutdown_state_t;
 
@@ -71,6 +74,7 @@ extern void main_powerdown_event(void);
 // shutdown state
 static main_shutdown_state_t main_shutdown_state = MAIN_SHUTDOWN_WAITING;
 static uint8_t shutdown_led_dc = 100;
+static uint8_t power_led_max_duty_cycle = 100;
 static app_power_mode_t interface_power_mode;
 static bool battery_powered;
 
@@ -140,12 +144,14 @@ static void prerun_board_config(void)
     flexio_pwm_init_pins();
     
     if (battery_powered == true){
-        // Turn on the red LED. TODO. Lower duty cycle to save power?
-        flexio_pwm_set_dutycycle(100);
+        // Turn on the red LED with low duty cycle to conserve power.
+        power_led_max_duty_cycle = POWER_LED_LOW_DUTY_CYCLE;
+        
     } else {
-        // Turn on the red LED when powered by USB or EC
-        flexio_pwm_set_dutycycle(100);       
+        // Turn on the red LED with max duty cycle when powered by USB or EC
+        power_led_max_duty_cycle = 100;
     }
+    flexio_pwm_set_dutycycle(power_led_max_duty_cycle);
 
     power_init();
     
@@ -169,6 +175,7 @@ void handle_reset_button()
             // Reset button pressed
             reset_pressed = 1;
             gpio_reset_count = 0;
+            main_shutdown_state = MAIN_LED_FULL_BRIGHTNESS;
         }
     } else if (reset_pressed && !gpio_get_reset_btn_fwrd()) {
         // Reset button released
@@ -214,8 +221,7 @@ void handle_reset_button()
 
 void board_30ms_hook()
 {
-  static uint8_t temp_led_dc = 0;
-  static bool blink_in_progress = false;
+  static uint8_t blink_in_progress = 0;
   
     if (go_to_sleep) {
         go_to_sleep = false;
@@ -227,19 +233,25 @@ void board_30ms_hook()
       PIN_HID_LED_PORT->PCR[PIN_HID_LED_BIT] = PORT_PCR_MUX(1);
       PIN_MSC_LED_PORT->PCR[PIN_MSC_LED_BIT] = PORT_PCR_MUX(1);
       PIN_CDC_LED_PORT->PCR[PIN_CDC_LED_BIT] = PORT_PCR_MUX(1);
+      power_led_max_duty_cycle = 100;
     }
     else if (usb_state == USB_DISCONNECTED) {
       // Disable pin
       PIN_HID_LED_PORT->PCR[PIN_HID_LED_BIT] = PORT_PCR_MUX(0);
       PIN_MSC_LED_PORT->PCR[PIN_MSC_LED_BIT] = PORT_PCR_MUX(0);
       PIN_CDC_LED_PORT->PCR[PIN_CDC_LED_BIT] = PORT_PCR_MUX(0);
+      power_led_max_duty_cycle = POWER_LED_LOW_DUTY_CYCLE;
     }
 
     switch (main_shutdown_state) {
+      case MAIN_LED_FULL_BRIGHTNESS:
+          // Jump power LED to full brightness
+          shutdown_led_dc = 100;
+          break;
       case MAIN_SHUTDOWN_CANCEL:
           main_shutdown_state = MAIN_SHUTDOWN_WAITING;
-          // Set the PWM value back to 100%
-          shutdown_led_dc = 100;
+          // Set the PWM value back to max duty cycle
+          shutdown_led_dc = power_led_max_duty_cycle;
           break;
       case MAIN_SHUTDOWN_PENDING:
           // Fade the PWM until the board is about to be shut down
@@ -286,19 +298,20 @@ void board_30ms_hook()
           main_shutdown_state = MAIN_SHUTDOWN_WAITING;
           break;
       case MAIN_SHUTDOWN_WAITING:
-          // Set the PWM value back to 100%
-          shutdown_led_dc = 100;
+          // Set the PWM value back to max duty cycle
+          shutdown_led_dc = power_led_max_duty_cycle;
           break;
       case MAIN_LED_BLINK:
-          temp_led_dc = shutdown_led_dc;
           shutdown_led_dc = 0;
           
           if (blink_in_progress) {
-            shutdown_led_dc = temp_led_dc;
-            blink_in_progress = false;
-            main_shutdown_state = MAIN_SHUTDOWN_WAITING;
+            blink_in_progress--;
           } else {
-            blink_in_progress = true;
+            blink_in_progress = 10;
+          }
+          
+          if (blink_in_progress == 0) { 
+            main_shutdown_state = MAIN_SHUTDOWN_WAITING;
           }
           break;
       default:
