@@ -36,10 +36,10 @@ bool allow_interface_jump()
 	// init power monitoring
     pwr_mon_init();
 
-    bool battery_powered = pwr_mon_battery_powered();
+    power_source_t power_source = pwr_mon_get_power_source();
     
     // If the device is battery powered, allow jumping to the interface application
-    return !gpio_get_reset_btn() || battery_powered;
+    return !gpio_get_reset_btn() || (power_source == PWR_BATT_ONLY);
 }
 
 /**

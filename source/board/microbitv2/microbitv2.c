@@ -76,7 +76,7 @@ static main_shutdown_state_t main_shutdown_state = MAIN_SHUTDOWN_WAITING;
 static uint8_t shutdown_led_dc = 100;
 static uint8_t power_led_max_duty_cycle = 100;
 static app_power_mode_t interface_power_mode;
-static bool battery_powered;
+static power_source_t power_source;
 
 // Board Rev ID detection. Reads BRD_REV_ID voltage
 // Depends on gpio_init() to have been executed already
@@ -138,12 +138,12 @@ static void prerun_board_config(void)
     // init power monitoring
     pwr_mon_init();
 
-    battery_powered = pwr_mon_battery_powered();
+    power_source = pwr_mon_get_power_source();
 
     flexio_pwm_init();
     flexio_pwm_init_pins();
     
-    if (battery_powered == true){
+    if (power_source == PWR_BATT_ONLY){
         // Turn on the red LED with low duty cycle to conserve power.
         power_led_max_duty_cycle = POWER_LED_LOW_DUTY_CYCLE;
         
@@ -284,14 +284,14 @@ void board_30ms_hook()
           }
           break;
       case MAIN_SHUTDOWN_1_REQUESTED:
-          if (battery_powered == true || usb_state == USB_DISCONNECTED) {
+          if (power_source == PWR_BATT_ONLY || usb_state == USB_DISCONNECTED) {
               interface_power_mode = kAPP_PowerModeVlps;
               main_powerdown_event();
           }
           main_shutdown_state = MAIN_SHUTDOWN_WAITING;
           break;
       case MAIN_SHUTDOWN_2_REQUESTED:
-          if (battery_powered == true || usb_state == USB_DISCONNECTED) {
+          if (power_source == PWR_BATT_ONLY || usb_state == USB_DISCONNECTED) {
               interface_power_mode = kAPP_PowerModeVlls0;
               main_powerdown_event();
           }

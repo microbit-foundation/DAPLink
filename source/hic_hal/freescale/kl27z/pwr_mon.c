@@ -14,6 +14,7 @@
 #define ADC_VREFH_CHANNEL   29U
 #define ADC_VREFH_MUX       (kADC16_ChannelMuxA)
 
+#define ADC_MV_TO_ADC(x)    ((x) * 0xFFF / 3300)  // Convert mV to ADC value (12bit and 3.3V reference)
 
 void pwr_mon_bandgap_init(void);
 uint32_t pwr_mon_read_vbg(uint32_t channelGroup);
@@ -26,20 +27,35 @@ void pwr_mon_init(void)
     adc_init_pins();
 }
 
-bool pwr_mon_battery_powered(void) {
+power_source_t pwr_mon_get_power_source(void) {
+    power_source_t power_source = PWR_SOURCE_NONE;
+    uint32_t bat_voltage_mv = 0;
     // Detect if device is battery powered
     gpio_set_run_vbat_sense(GPIO_ON);
     // Add a ~3ms delay to allow the 100nF capacitors to charge to about 3*RC.
     // 3 clock cycles per loop at -O2 ARMCC optimization
     for (uint32_t count = 48000; count > 0UL; count--); 
-    volatile uint32_t bat_adc = adc_read_channel(0, PIN_VMON_BAT_ADC_CH, PIN_VMON_BAT_ADC_MUX);
-    volatile uint32_t usb_adc = adc_read_channel(0, PIN_VMON_USB_ADC_CH, PIN_VMON_USB_ADC_MUX);
+    uint32_t bat_adc = adc_read_channel(0, PIN_VMON_BAT_ADC_CH, PIN_VMON_BAT_ADC_MUX);
     gpio_set_run_vbat_sense(GPIO_OFF);
+    
+    bool usb_on = (((PIN_WAKE_ON_EDGE_GPIO->PDIR) >> PIN_WAKE_ON_EDGE_BIT) & 0x01U) ? false : true;
+    
+    // Compensate for voltage divider with ratio of 11
+    bat_adc = bat_adc * 11;
+    
+    bat_voltage_mv = pwr_mon_adc_to_mv(bat_adc);
+    
+    if (usb_on == true && bat_voltage_mv < (2500)) {
+        power_source = PWR_USB_ONLY;
+    } else if (usb_on == true && bat_voltage_mv >= (2500)) {
+        power_source = PWR_USB_AND_BATT;
+    } else if (usb_on == false && bat_voltage_mv >= (2500)) {
+        power_source = PWR_BATT_ONLY;
+    } else if (usb_on == false && bat_voltage_mv < (2500)) {
+        power_source = PWR_SOURCE_NONE;
+    }
 
-    // With USB power any battery voltage should be at least 35% lower than USB, but with the battery only they will be
-    // around the same. So, add some marging (12% is easy to calculate) for the comparison
-    uint32_t bat_adc_marging = bat_adc >> 3;
-    return (bat_adc + bat_adc_marging) > usb_adc;
+    return power_source;
 }
 
 uint32_t pwr_mon_vcc_mv(void) {

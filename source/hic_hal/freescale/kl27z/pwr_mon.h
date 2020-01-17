@@ -12,9 +12,15 @@
 extern "C" {
 #endif
 
+typedef enum {
+    PWR_SOURCE_NONE = 0,
+    PWR_USB_ONLY,
+    PWR_BATT_ONLY,
+    PWR_USB_AND_BATT
+} power_source_t;
 
 void pwr_mon_init(void);
-bool pwr_mon_battery_powered(void);
+power_source_t pwr_mon_get_power_source(void);
 uint32_t pwr_mon_vcc_mv(void);
 
 
