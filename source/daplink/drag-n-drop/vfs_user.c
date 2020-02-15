@@ -63,6 +63,8 @@ typedef enum _magic_file {
     kOverflowOffConfigFile,     //!< Disable UART overflow reporting.
     kMSDOnConfigFile,           //!< Enable USB MSC. Uh....
     kMSDOffConfigFile,          //!< Disable USB MSC.
+    kImageCheckOnConfigFile,    //!< Enable Incompatible target image detection.
+    kImageCheckOffConfigFile,   //!< Disable Incompatible target image detection.
 } magic_file_t;
 
 //! @brief Mapping from filename string to magic file enum.
@@ -105,6 +107,8 @@ static const magic_file_info_t s_magic_file_info[] = {
         { "OVFL_OFFCFG", kOverflowOffConfigFile     },
         { "MSD_ON  CFG", kMSDOnConfigFile           },
         { "MSD_OFF CFG", kMSDOffConfigFile          },
+        { "COMP_ON CFG", kImageCheckOnConfigFile    },
+        { "COMP_OFFCFG", kImageCheckOffConfigFile   },
     };
 
 static uint8_t file_buffer[VFS_SECTOR_SIZE];
@@ -260,6 +264,12 @@ void vfs_user_file_change_handler(const vfs_filename_t filename, vfs_file_change
                         break;
                     case kMSDOffConfigFile:
                         config_ram_set_disable_msd(true);
+                        break;
+                    case kImageCheckOnConfigFile:
+                        config_set_detect_incompatible_target(true);
+                        break;
+                    case kImageCheckOffConfigFile:
+                        config_set_detect_incompatible_target(false);
                         break;
                     default:
                         util_assert(false);
