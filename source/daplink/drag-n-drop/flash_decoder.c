@@ -29,6 +29,7 @@
 #include "settings.h"       // for config_get_automation_allowed
 #include "validation.h"
 #include "target_board.h"
+#include "cmsis_compiler.h"
 
 // Set to 1 to enable debugging
 #define DEBUG_FLASH_DECODER     0
@@ -59,7 +60,7 @@ static bool flash_type_target_bin;
 
 static bool flash_decoder_is_at_end(uint32_t addr, const uint8_t *data, uint32_t size);
 
-__attribute__((weak)) uint8_t board_detect_incompatible_image(const uint8_t *data, uint32_t size)
+__WEAK uint8_t board_detect_incompatible_image(const uint8_t *data, uint32_t size)
 {
     return 0;   // Return 0 if image is compatible
 }
