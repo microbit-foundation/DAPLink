@@ -74,7 +74,7 @@ static main_led_state_t msc_led_state = MAIN_LED_FLASH;
 static main_usb_busy_t usb_busy;
 static uint32_t usb_busy_count;
 
-__attribute__((weak)) bool allow_interface_jump()
+__WEAK bool allow_interface_jump()
 {
     // Stay in bootloader if reset button is pressed
     return !gpio_get_reset_btn();

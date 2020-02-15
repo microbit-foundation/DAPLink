@@ -19,9 +19,10 @@
  * limitations under the License.
  */
 
-#include "string.h"
+#include <string.h>
 
 #include "intelhex.h"
+#include "cmsis_compiler.h"
 
 typedef enum hex_record_t hex_record_t;
 enum hex_record_t {
@@ -85,7 +86,7 @@ static hex_line_t line = {0}, shadow_line = {0};
 static uint32_t next_address_to_write = 0;
 static uint8_t low_nibble = 0, idx = 0, record_processed = 0, load_unaligned_record = 0;
 static uint16_t binary_version = 0;
-uint16_t board_id_hex __attribute__((weak));
+uint16_t board_id_hex __WEAK;
 
 void reset_hex_parser(void)
 {

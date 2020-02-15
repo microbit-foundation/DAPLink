@@ -362,7 +362,7 @@ uint8_t usbd_hid_no_activity(uint8_t *buf)
 }
 
 const board_info_t g_board_info = {
-    .infoVersion = 0x0,
+    .info_version = kBoardInfoVersion,
     .family_id = kNordic_Nrf52_FamilyID,
     .daplink_url_name =       "MICROBITHTM",
     .daplink_drive_name =       "MICROBIT",

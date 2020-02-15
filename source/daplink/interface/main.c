@@ -19,18 +19,15 @@
  * limitations under the License.
  */
 
-#include "string.h"
-#include "stdio.h"
-#include "stdint.h"
+#include <string.h>
+#include <stdio.h>
 
 #include "cmsis_os2.h"
 #include "rl_usb.h"
 #include "main.h"
-#include "board.h"
 #include "gpio.h"
 #include "uart.h"
 #include "tasks.h"
-#include "target_reset.h"
 #include "swd_host.h"
 #include "info.h"
 #include "settings.h"
@@ -107,9 +104,9 @@ static main_led_state_t msc_led_state = MAIN_LED_FLASH;
 main_usb_connect_t usb_state;
 static bool usb_test_mode = false;
 
-__attribute__((weak)) void board_30ms_hook(void){}
+__WEAK void board_30ms_hook(void){}
 
-__attribute__((weak)) void handle_reset_button(void)
+__WEAK void handle_reset_button(void)
 {
 	// button state
     static uint8_t reset_pressed = 0;
@@ -131,7 +128,7 @@ __attribute__((weak)) void handle_reset_button(void)
     }
 }
 
-__attribute__((weak)) void board_handle_powerdown()
+__WEAK void board_handle_powerdown()
 {
     // TODO: put the interface chip in sleep mode
 }
@@ -240,6 +237,9 @@ void main_task(void * arg)
     gpio_set_msc_led(msc_led_value);
     // Initialize the DAP
     DAP_Setup();
+
+    // make sure we have a valid board info structure.
+    util_assert(g_board_info.info_version == kBoardInfoVersion);
 
     // do some init with the target before USB and files are configured
     if (g_board_info.prerun_board_config) {
