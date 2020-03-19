@@ -29,7 +29,7 @@
 #include "rl_usb.h" 
 #include "pwr_mon.h"
 #include "main.h"
-// #include "i2c.h"
+#include "i2c.h"
 #include "adc.h"
 
 #ifdef DRAG_N_DROP_SUPPORT
@@ -55,7 +55,7 @@ typedef enum {
 
 extern target_cfg_t target_device_nrf52_64;
 extern main_usb_connect_t usb_state;
-// extern bool go_to_sleep;
+extern bool go_to_sleep;
 
 typedef enum main_shutdown_state {
     MAIN_SHUTDOWN_WAITING = 0,
@@ -155,7 +155,7 @@ static void prerun_board_config(void)
 
     power_init();
     
-    // i2c_initialize();
+    i2c_initialize();
 }
 
 // Handle the reset button behavior, this function is called in the main task every 30ms
@@ -223,10 +223,10 @@ void board_30ms_hook()
 {
   static uint8_t blink_in_progress = 0;
   
-    // if (go_to_sleep) {
-    //     go_to_sleep = false;
-    //     main_shutdown_state = MAIN_SHUTDOWN_1_REQUESTED;
-    // }
+    if (go_to_sleep) {
+        go_to_sleep = false;
+        main_shutdown_state = MAIN_SHUTDOWN_1_REQUESTED;
+    }
     
     if (usb_state == USB_CONNECTED) {
       // configure pin as GPIO
@@ -333,8 +333,8 @@ void board_handle_powerdown()
             break;
     }
     
-    // i2c_deinitialize();
-    // i2c_initialize();
+    i2c_deinitialize();
+    i2c_initialize();
     
     usbd_connect(1);
     
