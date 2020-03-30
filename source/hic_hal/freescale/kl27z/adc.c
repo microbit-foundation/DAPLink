@@ -24,6 +24,7 @@ void adc_init(void)
     adc16ConfigStruct.enableContinuousConversion = false;
     //ADC16_GetDefaultConfig(&adc16ConfigStruct);
     ADC16_Init(ADC_BASE, &adc16ConfigStruct);
+    ADC16_SetHardwareAverage(ADC_BASE, kADC16_HardwareAverageCount8);
     ADC16_DoAutoCalibration(ADC_BASE);
 }
 
