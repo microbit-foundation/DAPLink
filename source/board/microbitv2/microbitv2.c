@@ -39,9 +39,6 @@
 #define M0_RESERVED_VECT_OFFSET     (4 * 4)
 #define M0_RESERVED_VECT_SIZE       (3 * 4) // Size for mem fault, bus fault and usage fault vectors
 
-#define BRD_REV_ID_MB_2_0_VOLTAGE     3100  // 2.5V with 12bit conversion and 3.3V reference
-#define BRD_REV_ID_VOLTAGE_TOLERANCE  124   // +-100mV tolerance (3.3V ref)
-
 #define BRD_REV_ID_100R_V             3023  // 3.023 mV for 100nF and 100R
 #define BRD_REV_ID_680R_V             2081  // 2.081 mV for 100nF and 680R
 #define BRD_REV_ID_1500R_V            935   // 0.935 mV for 100nF and 1500R
