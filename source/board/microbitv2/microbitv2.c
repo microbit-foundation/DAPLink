@@ -70,10 +70,8 @@ extern bool go_to_sleep;
 typedef enum main_shutdown_state {
     MAIN_SHUTDOWN_WAITING = 0,
     MAIN_SHUTDOWN_PENDING,
-    MAIN_SHUTDOWN_1_REACHED,
-    MAIN_SHUTDOWN_1_REQUESTED,
-    MAIN_SHUTDOWN_2_REACHED,
-    MAIN_SHUTDOWN_2_REQUESTED,
+    MAIN_SHUTDOWN_REACHED,
+    MAIN_SHUTDOWN_REQUESTED,
     MAIN_LED_BLINK,
     MAIN_LED_FULL_BRIGHTNESS,
     MAIN_SHUTDOWN_CANCEL
@@ -228,29 +226,26 @@ void handle_reset_button()
 #endif
         {
             // Reset button pressed
+            target_set_state(RESET_HOLD);
             reset_pressed = 1;
             gpio_reset_count = 0;
             main_shutdown_state = MAIN_LED_FULL_BRIGHTNESS;
         }
     } else if (reset_pressed && !gpio_get_reset_btn_fwrd()) {
         // Reset button released
+        target_set_state(RESET_RUN);
         reset_pressed = 0;
 
         if (gpio_reset_count <= RESET_SHORT_PRESS) {
-            target_set_state(RESET_RUN);
             main_shutdown_state = MAIN_LED_BLINK;
         }
         else if (gpio_reset_count < RESET_LONG_PRESS) {
             // Indicate button has been released to stop to cancel the shutdown
-            main_shutdown_state = MAIN_SHUTDOWN_CANCEL;
+            main_shutdown_state = MAIN_LED_BLINK;
         }
-        else if (gpio_reset_count >= RESET_LONG_PRESS && gpio_reset_count < RESET_VERY_LONG_PRESS) {
+        else if (gpio_reset_count >= RESET_LONG_PRESS) {
             // Indicate the button has been released when shutdown is requested
-            main_shutdown_state = MAIN_SHUTDOWN_1_REQUESTED;
-        }
-        else if (gpio_reset_count >= RESET_VERY_LONG_PRESS) {
-            // Indicate the button has been released when shutdown is requested
-            main_shutdown_state = MAIN_SHUTDOWN_2_REQUESTED;
+            main_shutdown_state = MAIN_SHUTDOWN_REQUESTED;
         }
     } else if (reset_pressed && gpio_get_reset_btn_fwrd()) {
         // Reset button is still pressed
@@ -258,13 +253,9 @@ void handle_reset_button()
             // Enter the shutdown pending state to begin LED dimming
             main_shutdown_state = MAIN_SHUTDOWN_PENDING;
         }
-        else if (gpio_reset_count >= RESET_LONG_PRESS && gpio_reset_count < RESET_VERY_LONG_PRESS) {
+        else if (gpio_reset_count >= RESET_LONG_PRESS) {
             // Enter the shutdown reached state to blink LED
-            main_shutdown_state = MAIN_SHUTDOWN_1_REACHED;
-        }
-        else if (gpio_reset_count >= RESET_VERY_LONG_PRESS) {
-            // Enter the shutdown reached state to blink LED
-            main_shutdown_state = MAIN_SHUTDOWN_2_REACHED;
+            main_shutdown_state = MAIN_SHUTDOWN_REACHED;
         }
 
         // Avoid overflow, stop counting after longest event
@@ -280,7 +271,7 @@ void board_30ms_hook()
   
     if (go_to_sleep) {
         go_to_sleep = false;
-        main_shutdown_state = MAIN_SHUTDOWN_1_REQUESTED;
+        main_shutdown_state = MAIN_SHUTDOWN_REQUESTED;
     }
     
     if (usb_state == USB_CONNECTED) {
@@ -314,7 +305,7 @@ void board_30ms_hook()
               shutdown_led_dc--;
           }
           break;
-      case MAIN_SHUTDOWN_1_REACHED:
+      case MAIN_SHUTDOWN_REACHED:
           // Blink the LED to indicate we are waiting for release
           if (shutdown_led_dc < 10) {
               shutdown_led_dc++;
@@ -326,26 +317,8 @@ void board_30ms_hook()
               shutdown_led_dc--;
           }
           break;
-      case MAIN_SHUTDOWN_2_REACHED:
-          // Blink the LED to indicate we are waiting for release
-          if (shutdown_led_dc < 10) {
-              shutdown_led_dc += 2;
-          } else if (shutdown_led_dc == 10) {
-              shutdown_led_dc = 100;
-          } else if (shutdown_led_dc <= 90) {
-              shutdown_led_dc = 0;
-          } else if (shutdown_led_dc > 90) {
-              shutdown_led_dc -= 2;
-          }
-          break;
-      case MAIN_SHUTDOWN_1_REQUESTED:
-          if (power_source == PWR_BATT_ONLY || usb_state == USB_DISCONNECTED) {
-              interface_power_mode = kAPP_PowerModeVlps;
-              main_powerdown_event();
-          }
-          main_shutdown_state = MAIN_SHUTDOWN_WAITING;
-          break;
-      case MAIN_SHUTDOWN_2_REQUESTED:
+      case MAIN_SHUTDOWN_REQUESTED:
+          // TODO:  put nRF into deep sleep and wake nRF when KL27 wakes up
           if (power_source == PWR_BATT_ONLY || usb_state == USB_DISCONNECTED) {
               interface_power_mode = kAPP_PowerModeVlls0;
               main_powerdown_event();
@@ -357,12 +330,15 @@ void board_30ms_hook()
           shutdown_led_dc = power_led_max_duty_cycle;
           break;
       case MAIN_LED_BLINK:
-          shutdown_led_dc = 0;
           
           if (blink_in_progress) {
             blink_in_progress--;
+            if (blink_in_progress == 5) {
+              shutdown_led_dc = 0;
+            }
           } else {
             blink_in_progress = 10;
+            shutdown_led_dc = 100;
           }
           
           if (blink_in_progress == 0) { 

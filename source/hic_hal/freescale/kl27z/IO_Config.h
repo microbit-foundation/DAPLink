@@ -140,9 +140,7 @@ COMPILER_ASSERT(DAPLINK_HIC_ID == DAPLINK_HIC_ID_KL27Z);
 // define the long and short reset button presses
 #define RESET_SHORT_PRESS          8    // x 30ms debounce time =  240ms
 #define RESET_LONG_PRESS           130  // x 30ms debounce time = 3900ms
-#define RESET_2SEC_PRESS           66   // x 30ms debounce time = 1980ms
-#define RESET_VERY_LONG_PRESS      (RESET_LONG_PRESS + RESET_2SEC_PRESS * 1)
-#define RESET_MAX_LENGTH_PRESS     RESET_VERY_LONG_PRESS
+#define RESET_MAX_LENGTH_PRESS     RESET_LONG_PRESS
 
 // BOARD REV ID
 #define PIN_BOARD_REV_ID_PORT     PORTD
