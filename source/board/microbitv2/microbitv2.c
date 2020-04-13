@@ -110,8 +110,8 @@ static mb_version_t read_brd_rev_id_pin(void) {
     } else {
         // 2. Discharge capacitor
         //    Drive BRD_REV_ID pin to low
-        PIN_BOARD_REV_ID_PORT->PCR[PIN_BOARD_REV_ID_BIT] |= PORT_PCR_MUX(1);
         gpio_set_brd_rev_id(GPIO_OFF);
+        PIN_BOARD_REV_ID_PORT->PCR[PIN_BOARD_REV_ID_BIT] |= PORT_PCR_MUX(1);
         //    Add a 3ms delay to allow the 100nF Cap to discharge 
         //    at least 5*RC with 4700R.
         for (uint32_t count = 16 * 3000; count > 0UL; count--);
@@ -131,8 +131,8 @@ static mb_version_t read_brd_rev_id_pin(void) {
         
         // 5. Discharge capacitor
         //    Drive BRD_REV_ID pin to low
-        PIN_BOARD_REV_ID_PORT->PCR[PIN_BOARD_REV_ID_BIT] |= PORT_PCR_MUX(1);
         gpio_set_brd_rev_id(GPIO_OFF);
+        PIN_BOARD_REV_ID_PORT->PCR[PIN_BOARD_REV_ID_BIT] |= PORT_PCR_MUX(1);
         //    Add a 3ms delay to allow the 100nF Cap to discharge 
         //    at least 5*RC with 4700R.
         for (uint32_t count = 16 * 3000; count > 0UL; count--);
