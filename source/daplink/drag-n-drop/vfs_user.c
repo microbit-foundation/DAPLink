@@ -4,6 +4,8 @@
  *
  * DAPLink Interface Firmware
  * Copyright (c) 2009-2020, ARM Limited, All Rights Reserved
+ * Copyright 2019, Cypress Semiconductor Corporation 
+ * or a subsidiary of Cypress Semiconductor Corporation.
  * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -35,6 +37,7 @@
 #include "flash_intf.h"     // for flash_intf_target
 #include "cortex_m.h"
 #include "target_board.h"
+#include "flash_manager.h"
 
 //! @brief Size in bytes of the virtual disk.
 //!
@@ -65,6 +68,8 @@ typedef enum _magic_file {
     kMSDOffConfigFile,          //!< Disable USB MSC.
     kImageCheckOnConfigFile,    //!< Enable Incompatible target image detection.
     kImageCheckOffConfigFile,   //!< Disable Incompatible target image detection.
+    kPageEraseActionFile,       //!< Enable page programming and sector erase for drag and drop.
+    kChipEraseActionFile,       //!< Enable page programming and chip erase for drag and drop.
 } magic_file_t;
 
 //! @brief Mapping from filename string to magic file enum.
@@ -109,6 +114,8 @@ static const magic_file_info_t s_magic_file_info[] = {
         { "MSD_OFF CFG", kMSDOffConfigFile          },
         { "COMP_ON CFG", kImageCheckOnConfigFile    },
         { "COMP_OFFCFG", kImageCheckOffConfigFile   },
+        { "PAGE_ON ACT", kPageEraseActionFile       },
+        { "PAGE_OFFACT", kChipEraseActionFile       },
     };
 
 static uint8_t file_buffer[VFS_SECTOR_SIZE];
@@ -270,6 +277,12 @@ void vfs_user_file_change_handler(const vfs_filename_t filename, vfs_file_change
                         break;
                     case kImageCheckOffConfigFile:
                         config_set_detect_incompatible_target(false);
+                        break;
+                    case kPageEraseActionFile:
+                        config_ram_set_page_erase(true);
+                        break;
+                    case kChipEraseActionFile:
+                        config_ram_set_page_erase(false);
                         break;
                     default:
                         util_assert(false);
@@ -488,6 +501,9 @@ static uint32_t update_details_txt_file(uint8_t *data, uint32_t datasize)
     pos += util_write_string(buf + pos, "\r\n");
     pos += util_write_string(buf + pos, "Overflow detection: ");
     pos += util_write_string(buf + pos, config_get_overflow_detect() ? "1" : "0");
+    pos += util_write_string(buf + pos, "\r\n");
+    pos += util_write_string(buf + pos, "Page erasing: ");
+    pos += util_write_string(buf + pos, config_ram_get_page_erase() ? "1" : "0");
     pos += util_write_string(buf + pos, "\r\n");
     // Current mode
     mode_str = daplink_is_bootloader() ? "Bootloader" : "Interface";
