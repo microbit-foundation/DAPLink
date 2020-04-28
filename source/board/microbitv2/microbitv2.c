@@ -45,7 +45,7 @@
 #define BRD_REV_ID_4700R_V            268   // 0.268 mV for 100nF and 4700R
 #define BRD_REV_ID_0R_V               0     // 0 mV for 0R
 
-#define POWER_LED_LOW_DUTY_CYCLE      10
+#define POWER_LED_LOW_DUTY_CYCLE      40
 
 const char * const board_id_mb_2_0 = "9903";
 const char * const board_id_mb_2_1 = "9904";
@@ -301,21 +301,13 @@ void board_30ms_hook()
           break;
       case MAIN_SHUTDOWN_PENDING:
           // Fade the PWM until the board is about to be shut down
-          if (shutdown_led_dc > 0) {
+          if (shutdown_led_dc > 40) {
               shutdown_led_dc--;
           }
           break;
       case MAIN_SHUTDOWN_REACHED:
-          // Blink the LED to indicate we are waiting for release
-          if (shutdown_led_dc < 10) {
-              shutdown_led_dc++;
-          } else if (shutdown_led_dc == 10) {
-              shutdown_led_dc = 100;
-          } else if (shutdown_led_dc <= 90) {
-              shutdown_led_dc = 0;
-          } else if (shutdown_led_dc > 90) {
-              shutdown_led_dc--;
-          }
+          // Turn off LED to indicate we are waiting for release
+          shutdown_led_dc = 0;
           break;
       case MAIN_SHUTDOWN_REQUESTED:
           // TODO:  put nRF into deep sleep and wake nRF when KL27 wakes up
@@ -348,7 +340,8 @@ void board_30ms_hook()
       default:
           break;
     }
-    flexio_pwm_set_dutycycle(shutdown_led_dc);
+    uint32_t gamma_led_dc = shutdown_led_dc * shutdown_led_dc * shutdown_led_dc/10000;
+    flexio_pwm_set_dutycycle(gamma_led_dc);
 }
 
 void board_handle_powerdown()
