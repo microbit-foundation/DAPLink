@@ -39,28 +39,16 @@
 #define M0_RESERVED_VECT_OFFSET     (4 * 4)
 #define M0_RESERVED_VECT_SIZE       (3 * 4) // Size for mem fault, bus fault and usage fault vectors
 
-#define BRD_REV_ID_100R_V             3023  // 3.023 mV for 100nF and 100R
-#define BRD_REV_ID_680R_V             2081  // 2.081 mV for 100nF and 680R
-#define BRD_REV_ID_1500R_V            935   // 0.935 mV for 100nF and 1500R
 #define BRD_REV_ID_4700R_V            268   // 0.268 mV for 100nF and 4700R
-#define BRD_REV_ID_0R_V               0     // 0 mV for 0R
 
 #define POWER_LED_LOW_DUTY_CYCLE      40
 
 const char * const board_id_mb_2_0 = "9903";
-const char * const board_id_mb_2_1 = "9904";
-const char * const board_id_mb_2_2 = "9905";
-const char * const board_id_mb_2_3 = "9906";
-const char * const board_id_mb_2_4 = "9907";
 
 uint16_t board_id_hex = 0;
 
 typedef enum {
     BOARD_VERSION_2_0 = 0,
-    BOARD_VERSION_2_1 = 1,
-    BOARD_VERSION_2_2 = 2,
-    BOARD_VERSION_2_3 = 3,
-    BOARD_VERSION_2_4 = 4,
 } mb_version_t;
 
 extern target_cfg_t target_device_nrf52_64;
@@ -95,58 +83,40 @@ static mb_version_t read_brd_rev_id_pin(void) {
 
     adc_init();
     
-    // 1. Check for older boards with R3 populated. (C10 will be charged)
-    //    If C10 voltage is near VREG, it's an old board.
-    //    In newer boards C10 will be discharged.
-    //    Take ADC measurement
+    // 1. Discharge capacitor
+    //    Drive BRD_REV_ID pin to low
+    gpio_set_brd_rev_id(GPIO_OFF);
+    PIN_BOARD_REV_ID_PORT->PCR[PIN_BOARD_REV_ID_BIT] |= PORT_PCR_MUX(1);
+    //    Add a 3ms delay to allow the 100nF Cap to discharge 
+    //    at least 5*RC with 4700R.
+    for (uint32_t count = 16 * 3000; count > 0UL; count--);
+    
+    // 2. Charge capacitor for 100us
+    //    Drive BRD_REV_ID pin to high
+    gpio_set_brd_rev_id(GPIO_ON);
+    //    Add a ~100us delay
+    //    3 clock cycles per loop at -O2 ARMCC optimization
+    for (uint32_t count = 1600; count > 0UL; count--);
+    //    Change pin to ADC (High-Z). Capacitor will stop charging
     PIN_BOARD_REV_ID_PORT->PCR[PIN_BOARD_REV_ID_BIT] &= ~PORT_PCR_MUX(1);
+    
+    // 3. Take ADC measurement
     board_rev_id_adc = adc_read_channel(0, PIN_BOARD_REV_ID_ADC_CH, PIN_BOARD_REV_ID_ADC_MUX);
     board_rev_id_mv = board_rev_id_adc * 3300 / 0xFFF;  // Convert ADC 12-bit value to mV with 3.3V reference
     
-    if (board_rev_id_mv > BRD_REV_ID_100R_V) {
+    // 4. Discharge capacitor
+    //    Drive BRD_REV_ID pin to low
+    gpio_set_brd_rev_id(GPIO_OFF);
+    PIN_BOARD_REV_ID_PORT->PCR[PIN_BOARD_REV_ID_BIT] |= PORT_PCR_MUX(1);
+    //    Add a 3ms delay to allow the 100nF Cap to discharge 
+    //    at least 5*RC with 4700R.
+    for (uint32_t count = 16 * 3000; count > 0UL; count--);
+    
+    // 5. Identify board ID depending on voltage
+    if ( board_rev_id_mv > BRD_REV_ID_4700R_V ) {
         board_version = BOARD_VERSION_2_0;
     } else {
-        // 2. Discharge capacitor
-        //    Drive BRD_REV_ID pin to low
-        gpio_set_brd_rev_id(GPIO_OFF);
-        PIN_BOARD_REV_ID_PORT->PCR[PIN_BOARD_REV_ID_BIT] |= PORT_PCR_MUX(1);
-        //    Add a 3ms delay to allow the 100nF Cap to discharge 
-        //    at least 5*RC with 4700R.
-        for (uint32_t count = 16 * 3000; count > 0UL; count--);
-        
-        // 3. Charge capacitor for 100us
-        //    Drive BRD_REV_ID pin to high
-        gpio_set_brd_rev_id(GPIO_ON);
-        //    Add a ~100us delay
-        //    3 clock cycles per loop at -O2 ARMCC optimization
-        for (uint32_t count = 1600; count > 0UL; count--);
-        //    Change pin to ADC (High-Z). Capacitor will stop charging
-        PIN_BOARD_REV_ID_PORT->PCR[PIN_BOARD_REV_ID_BIT] &= ~PORT_PCR_MUX(1);
-        
-        // 4. Take ADC measurement
-        board_rev_id_adc = adc_read_channel(0, PIN_BOARD_REV_ID_ADC_CH, PIN_BOARD_REV_ID_ADC_MUX);
-        board_rev_id_mv = board_rev_id_adc * 3300 / 0xFFF;  // Convert ADC 12-bit value to mV with 3.3V reference
-        
-        // 5. Discharge capacitor
-        //    Drive BRD_REV_ID pin to low
-        gpio_set_brd_rev_id(GPIO_OFF);
-        PIN_BOARD_REV_ID_PORT->PCR[PIN_BOARD_REV_ID_BIT] |= PORT_PCR_MUX(1);
-        //    Add a 3ms delay to allow the 100nF Cap to discharge 
-        //    at least 5*RC with 4700R.
-        for (uint32_t count = 16 * 3000; count > 0UL; count--);
-        
-        // 6. Identify board ID depending on voltage
-        if ( board_rev_id_mv > BRD_REV_ID_100R_V ) {
-            board_version = BOARD_VERSION_2_3;
-        } else if ( board_rev_id_mv > BRD_REV_ID_680R_V ) {
-            board_version = BOARD_VERSION_2_2;
-        } else if ( board_rev_id_mv > BRD_REV_ID_1500R_V ) {
-            board_version = BOARD_VERSION_2_1;
-        } else if ( board_rev_id_mv > BRD_REV_ID_4700R_V ) {
-            board_version = BOARD_VERSION_2_0;
-        } else if ( board_rev_id_mv >= BRD_REV_ID_0R_V ) {
-            board_version = BOARD_VERSION_2_4;
-        }
+        board_version = BOARD_VERSION_2_0;
     }
     
     return board_version;
@@ -158,22 +128,6 @@ static void set_board_id(mb_version_t board_version) {
         case BOARD_VERSION_2_0:
             target_device.rt_board_id = board_id_mb_2_0;
             board_id_hex = 0x9903;
-            break;
-        case BOARD_VERSION_2_1:
-            target_device.rt_board_id = board_id_mb_2_1;
-            board_id_hex = 0x9904;
-            break;
-        case BOARD_VERSION_2_2:
-            target_device.rt_board_id = board_id_mb_2_2;
-            board_id_hex = 0x9905;
-            break;
-        case BOARD_VERSION_2_3:
-            target_device.rt_board_id = board_id_mb_2_3;
-            board_id_hex = 0x9906;
-            break;
-        case BOARD_VERSION_2_4:
-            target_device.rt_board_id = board_id_mb_2_4;
-            board_id_hex = 0x9907;
             break;
         default:
             target_device.rt_board_id = board_id_mb_2_0;
