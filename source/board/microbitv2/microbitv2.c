@@ -39,16 +39,19 @@
 #define M0_RESERVED_VECT_OFFSET     (4 * 4)
 #define M0_RESERVED_VECT_SIZE       (3 * 4) // Size for mem fault, bus fault and usage fault vectors
 
-#define BRD_REV_ID_4700R_V            268   // 0.268 mV for 100nF and 4700R
+#define BRD_ID_1_UPPER_THR_V        935   // Upper threshold in mV for 100nF and 4700R
+#define BRD_ID_1_LOWER_THR_V        268   // Lower threshold in mV for 100nF and 4700R
 
 #define POWER_LED_LOW_DUTY_CYCLE      40
 
 const char * const board_id_mb_2_0 = "9903";
+const char * const board_id_mb_2_1 = "9904";
 
 uint16_t board_id_hex = 0;
 
 typedef enum {
     BOARD_VERSION_2_0 = 0,
+    BOARD_VERSION_2_1 = 1,
 } mb_version_t;
 
 extern target_cfg_t target_device_nrf52_64;
@@ -113,8 +116,8 @@ static mb_version_t read_brd_rev_id_pin(void) {
     for (uint32_t count = 16 * 3000; count > 0UL; count--);
     
     // 5. Identify board ID depending on voltage
-    if ( board_rev_id_mv > BRD_REV_ID_4700R_V ) {
-        board_version = BOARD_VERSION_2_0;
+    if ( board_rev_id_mv > BRD_ID_1_LOWER_THR_V && board_rev_id_mv < BRD_ID_1_UPPER_THR_V) {
+        board_version = BOARD_VERSION_2_1;
     } else {
         board_version = BOARD_VERSION_2_0;
     }
@@ -128,6 +131,10 @@ static void set_board_id(mb_version_t board_version) {
         case BOARD_VERSION_2_0:
             target_device.rt_board_id = board_id_mb_2_0;
             board_id_hex = 0x9903;
+            break;
+        case BOARD_VERSION_2_1:
+            target_device.rt_board_id = board_id_mb_2_1;
+            board_id_hex = 0x9904;
             break;
         default:
             target_device.rt_board_id = board_id_mb_2_0;
