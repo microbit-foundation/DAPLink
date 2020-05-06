@@ -42,7 +42,8 @@
 #define BRD_ID_1_UPPER_THR_V        935   // Upper threshold in mV for 100nF and 4700R
 #define BRD_ID_1_LOWER_THR_V        268   // Lower threshold in mV for 100nF and 4700R
 
-#define POWER_LED_LOW_DUTY_CYCLE      40
+#define PWR_LED_ON_BATT_BRIGHTNESS      40 // LED Brightness while being powered by battery
+#define PWR_LED_FADEOUT_MIN_BRIGHTNESS  30 // Minimum LED brightness when fading out
 
 const char * const board_id_mb_2_0 = "9903";
 const char * const board_id_mb_2_1 = "9904";
@@ -143,6 +144,13 @@ static void set_board_id(mb_version_t board_version) {
     }
 }
 
+// Apply a gamma curve to the LED. Input brightness between 0-100
+static inline uint8_t get_led_gamma(uint8_t brightness) {
+    uint8_t duty_cycle;
+    duty_cycle = (brightness * brightness * brightness + 5000) / 10000;
+    return duty_cycle;
+}
+
 // Called in main_task() to init before USB and files are configured
 static void prerun_board_config(void)
 {
@@ -159,13 +167,14 @@ static void prerun_board_config(void)
     
     if (power_source == PWR_BATT_ONLY){
         // Turn on the red LED with low duty cycle to conserve power.
-        power_led_max_duty_cycle = POWER_LED_LOW_DUTY_CYCLE;
+        power_led_max_duty_cycle = PWR_LED_ON_BATT_BRIGHTNESS;
         
     } else {
         // Turn on the red LED with max duty cycle when powered by USB or EC
         power_led_max_duty_cycle = 100;
     }
-    flexio_pwm_set_dutycycle(power_led_max_duty_cycle);
+    uint8_t gamma_led_dc = get_led_gamma(power_led_max_duty_cycle);
+    flexio_pwm_set_dutycycle(gamma_led_dc);
 
     power_init();
     
@@ -247,7 +256,7 @@ void board_30ms_hook()
       PIN_HID_LED_PORT->PCR[PIN_HID_LED_BIT] = PORT_PCR_MUX(0);
       PIN_MSC_LED_PORT->PCR[PIN_MSC_LED_BIT] = PORT_PCR_MUX(0);
       PIN_CDC_LED_PORT->PCR[PIN_CDC_LED_BIT] = PORT_PCR_MUX(0);
-      power_led_max_duty_cycle = POWER_LED_LOW_DUTY_CYCLE;
+      power_led_max_duty_cycle = PWR_LED_ON_BATT_BRIGHTNESS;
     }
 
     switch (main_shutdown_state) {
@@ -262,7 +271,7 @@ void board_30ms_hook()
           break;
       case MAIN_SHUTDOWN_PENDING:
           // Fade the PWM until the board is about to be shut down
-          if (shutdown_led_dc > 40) {
+          if (shutdown_led_dc > PWR_LED_FADEOUT_MIN_BRIGHTNESS) {
               shutdown_led_dc--;
           }
           break;
@@ -301,7 +310,7 @@ void board_30ms_hook()
       default:
           break;
     }
-    uint32_t gamma_led_dc = shutdown_led_dc * shutdown_led_dc * shutdown_led_dc/10000;
+    uint8_t gamma_led_dc = get_led_gamma(shutdown_led_dc);
     flexio_pwm_set_dutycycle(gamma_led_dc);
 }
 
