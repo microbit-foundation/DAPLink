@@ -87,6 +87,7 @@ static uint32_t next_address_to_write = 0;
 static uint8_t low_nibble = 0, idx = 0, record_processed = 0, load_unaligned_record = 0;
 static uint16_t binary_version = 0;
 uint16_t board_id_hex __WEAK;
+uint16_t board_id_hex_min __WEAK;
 
 void reset_hex_parser(void)
 {
@@ -161,7 +162,7 @@ hexfile_parse_status_t parse_hex_blob(const uint8_t *hex_blob, const uint32_t he
                                         // keeping a record of the last hex record
                                         memcpy(shadow_line.buf, line.buf, sizeof(hex_line_t));
 
-                                        if (binary_version == 0 || binary_version == board_id_hex){
+                                        if (binary_version == 0 || (binary_version >= board_id_hex_min && binary_version <= board_id_hex)){
                                             // Only save data from the correct binary
                                             // verify this is a continous block of memory or need to exit and dump
                                             if (((next_address_to_write & 0xffff0000) | line.address) != next_address_to_write) {

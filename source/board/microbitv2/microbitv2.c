@@ -48,6 +48,7 @@
 const char * const board_id_mb_2_0 = "9903";
 const char * const board_id_mb_2_1 = "9904";
 
+uint16_t board_id_hex_min = 0x9903;
 uint16_t board_id_hex = 0;
 
 typedef enum {
