@@ -30,7 +30,6 @@ void adc_init(void)
 
 void adc_init_pins()
 {
-    PIN_VMON_USB_PORT->PCR[PIN_VMON_USB_BIT] = PORT_PCR_MUX(PIN_VMON_USB_ALT_MODE);
     PIN_VMON_BAT_PORT->PCR[PIN_VMON_BAT_BIT] = PORT_PCR_MUX(PIN_VMON_BAT_ALT_MODE);
 }
 

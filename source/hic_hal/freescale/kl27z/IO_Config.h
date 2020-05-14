@@ -80,15 +80,6 @@ COMPILER_ASSERT(DAPLINK_HIC_ID == DAPLINK_HIC_ID_KL27Z);
 
 // Volatge monitor pins
 
-// USB Voltage monitor PTD5
-#define PIN_VMON_USB_PORT      PORTD
-#define PIN_VMON_USB_GPIO      PTD
-#define PIN_VMON_USB_BIT       (5)
-#define PIN_VMON_USB           (1<<PIN_VMON_USB_BIT)
-#define PIN_VMON_USB_ALT_MODE  (0)
-#define PIN_VMON_USB_ADC_CH    (6)
-#define PIN_VMON_USB_ADC_MUX   (1)
-
 // Battery Voltage monitor PTB1
 #define PIN_VMON_BAT_PORT      PORTB
 #define PIN_VMON_BAT_GPIO      PTB
