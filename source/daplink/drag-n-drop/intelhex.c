@@ -178,6 +178,10 @@ hexfile_parse_status_t parse_hex_blob(const uint8_t *hex_blob, const uint32_t he
                                             // Save next address to write
                                             next_address_to_write = ((next_address_to_write & 0xffff0000) | line.address) + line.byte_count;
                                         }
+                                        else {
+                                          status = HEX_PARSE_OK;
+                                          goto hex_parser_exit;
+                                        }
                                         break;
 
                                     case EOF_RECORD:
