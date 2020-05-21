@@ -5,9 +5,10 @@
 
 #include "pwr_mon.h"
 #include "adc.h"
-#include "gpio.h"
+#include "fsl_adc16.h"
 #include "fsl_pmc.h"
-
+#include "fsl_port.h"
+#include "fsl_gpio.h"
 
 #define ADC_VBG_CHANNEL     27U
 #define ADC_VBG_MUX         (kADC16_ChannelMuxA)
@@ -20,23 +21,31 @@ void pwr_mon_bandgap_init(void);
 uint32_t pwr_mon_read_vbg(uint32_t channelGroup);
 uint32_t pwr_mon_adc_to_mv(uint32_t raw_adc);
 
-
 void pwr_mon_init(void)
 {
+    gpio_pin_config_t pin_config = {
+        .pinDirection = kGPIO_DigitalOutput,
+        .outputLogic = 0U
+    };
+    
     adc_init();
-    adc_init_pins();
+    
+    // Configure VMON_BAT and RUN_VBAT_SENSE
+    GPIO_PinInit(PIN_RUN_VBAT_SENSE_GPIO, PIN_RUN_VBAT_SENSE_BIT, &pin_config);
+    PORT_SetPinMux(PIN_RUN_VBAT_SENSE_PORT, PIN_RUN_VBAT_SENSE_BIT, kPORT_MuxAsGpio);
+    PORT_SetPinMux(PIN_VMON_BAT_PORT, PIN_VMON_BAT_BIT, PIN_VMON_BAT_ALT_MODE);
 }
 
 power_source_t pwr_mon_get_power_source(void) {
     power_source_t power_source = PWR_SOURCE_NONE;
     uint32_t bat_voltage_mv = 0;
     // Detect if device is battery powered
-    gpio_set_run_vbat_sense(GPIO_ON);
+    GPIO_PinWrite(PIN_RUN_VBAT_SENSE_GPIO, PIN_RUN_VBAT_SENSE_BIT, 1);
     // Add a ~3ms delay to allow the 100nF capacitors to charge to about 3*RC.
     // 3 clock cycles per loop at -O2 ARMCC optimization
     for (uint32_t count = 48000; count > 0UL; count--); 
     uint32_t bat_adc = adc_read_channel(0, PIN_VMON_BAT_ADC_CH, PIN_VMON_BAT_ADC_MUX);
-    gpio_set_run_vbat_sense(GPIO_OFF);
+    GPIO_PinWrite(PIN_RUN_VBAT_SENSE_GPIO, PIN_RUN_VBAT_SENSE_BIT, 0);
     
     bool usb_on = (((PIN_WAKE_ON_EDGE_GPIO->PDIR) >> PIN_WAKE_ON_EDGE_BIT) & 0x01U) ? false : true;
     
@@ -66,7 +75,6 @@ uint32_t pwr_mon_vcc_mv(void) {
     // Reference voltage is 1V, scale to millivolts
     return vref_high * 1000 / ref_volt;
 }
-
 
 void pwr_mon_bandgap_init(void) {
     pmc_bandgap_buffer_config_t pmcBandgapConfig;

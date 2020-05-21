@@ -48,7 +48,7 @@ void clear_buffers(void)
 int32_t uart_initialize(void)
 {
     NVIC_DisableIRQ(UART_RX_TX_IRQn);
-    
+
     // enable clk port
     if (UART_PORT == PORTA) {
         SIM->SCGC5 |= SIM_SCGC5_PORTA_MASK;
@@ -71,12 +71,12 @@ int32_t uart_initialize(void)
         CLOCK_SetLpuart0Clock(1);
         CLOCK_EnableClock(kCLOCK_Lpuart0);
     }
-    
+
     if (1 == UART_NUM) {
         CLOCK_SetLpuart1Clock(1);
         CLOCK_EnableClock(kCLOCK_Lpuart1);
     }
-    
+
 
     // transmitter and receiver disabled
     UART->CTRL &= ~(LPUART_CTRL_RE_MASK | LPUART_CTRL_TE_MASK);
@@ -84,7 +84,7 @@ int32_t uart_initialize(void)
     UART->CTRL &= ~(LPUART_CTRL_RIE_MASK | LPUART_CTRL_TIE_MASK);
 
     clear_buffers();
-    
+
     // alternate setting
     UART_PORT->PCR[PIN_UART_RX_BIT] = PORT_PCR_MUX(PIN_UART_RX_MUX_ALT) | PORT_PCR_PE_MASK | PORT_PCR_PS_MASK;
     UART_PORT->PCR[PIN_UART_TX_BIT] = PORT_PCR_MUX(PIN_UART_TX_MUX_ALT);
@@ -238,14 +238,14 @@ void UART_RX_TX_IRQHandler(void)
     {
         // Clear overrun flag, otherwise the RX does not work.
         UART->STAT = ((UART->STAT & 0x3FE00000U) | LPUART_STAT_OR_MASK);
-        
+
         if (config_get_overflow_detect()) {
             if (RX_OVRF_MSG_SIZE <= circ_buf_count_free(&read_buffer)) {
                 circ_buf_write(&read_buffer, (uint8_t*)RX_OVRF_MSG, RX_OVRF_MSG_SIZE);
             }
         }
     }
-    
+
     // handle character to transmit
     if (s1 & LPUART_STAT_TDRE_MASK) {
         // Assert that there is data in the buffer
@@ -269,7 +269,7 @@ void UART_RX_TX_IRQHandler(void)
             UART->STAT = ((UART->STAT & 0x3FE00000U) | LPUART_STAT_NF_MASK | LPUART_STAT_FE_MASK);
         } else {
             uint32_t free;
-            uint8_t data;        
+            uint8_t data;
 
             data = UART->DATA;
             free = circ_buf_count_free(&read_buffer);
@@ -285,7 +285,7 @@ void UART_RX_TX_IRQHandler(void)
                 // Drop oldest
                 circ_buf_pop(&read_buffer);
                 circ_buf_push(&read_buffer, data);
-            } 
+            }
         }
     }
 }

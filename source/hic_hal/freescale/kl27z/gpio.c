@@ -33,40 +33,24 @@ static void busy_wait(uint32_t cycles)
 
 void gpio_init(void)
 {
+    // enable clock to ports
     SIM->SCGC5 |= SIM_SCGC5_PORTA_MASK | SIM_SCGC5_PORTB_MASK | SIM_SCGC5_PORTC_MASK | SIM_SCGC5_PORTD_MASK | SIM_SCGC5_PORTE_MASK;
-    // Disable DAPLink LED pin. Will be configured as GPIO when USB is connected.
-    if (daplink_is_interface()) {
-      PIN_HID_LED_PORT->PCR[PIN_HID_LED_BIT] = PORT_PCR_MUX(0);
-      PIN_MSC_LED_PORT->PCR[PIN_MSC_LED_BIT] = PORT_PCR_MUX(0);
-      PIN_CDC_LED_PORT->PCR[PIN_CDC_LED_BIT] = PORT_PCR_MUX(0);
-    } else {
-      PIN_HID_LED_PORT->PCR[PIN_HID_LED_BIT] = PORT_PCR_MUX(1);
-      PIN_MSC_LED_PORT->PCR[PIN_MSC_LED_BIT] = PORT_PCR_MUX(1);
-      PIN_CDC_LED_PORT->PCR[PIN_CDC_LED_BIT] = PORT_PCR_MUX(1);
-    }
-
     // configure pin as GPIO
+    PIN_HID_LED_PORT->PCR[PIN_HID_LED_BIT] = PORT_PCR_MUX(PIN_HID_LED_MUX_ALT);
+    PIN_MSC_LED_PORT->PCR[PIN_MSC_LED_BIT] = PORT_PCR_MUX(PIN_MSC_LED_MUX_ALT);
+    PIN_CDC_LED_PORT->PCR[PIN_CDC_LED_BIT] = PORT_PCR_MUX(PIN_CDC_LED_MUX_ALT);
     PIN_SW_RESET_PORT->PCR[PIN_SW_RESET_BIT] = PORT_PCR_MUX(1);
-    PIN_WAKE_ON_EDGE_PORT->PCR[PIN_WAKE_ON_EDGE_BIT] = PORT_PCR_MUX(1);
-    PIN_RED_LED_PORT->PCR[PIN_RED_LED_BIT] = PORT_PCR_MUX(1);
-    PIN_RUN_VMON_BAT_PORT->PCR[PIN_RUN_VMON_BAT_BIT] = PORT_PCR_MUX(1);
-    PIN_BOARD_REV_ID_PORT->PCR[PIN_BOARD_REV_ID_BIT] |= PORT_PCR_DSE(1);
 
     // led off
     gpio_set_hid_led(GPIO_LED_OFF);
     gpio_set_cdc_led(GPIO_LED_OFF);
     gpio_set_msc_led(GPIO_LED_OFF);
-//    gpio_set_red_led(GPIO_LED_OFF);
-    // Voltage monitoring enable off
-    gpio_set_run_vbat_sense(GPIO_OFF);
+
     // Set as output
-    PIN_HID_LED_GPIO->PDDR  |= PIN_HID_LED;
-    PIN_MSC_LED_GPIO->PDDR  |= PIN_MSC_LED;
-    PIN_CDC_LED_GPIO->PDDR  |= PIN_CDC_LED;
-    PIN_RED_LED_GPIO->PDDR |= PIN_RED_LED;
-    PIN_RUN_VMON_BAT_GPIO->PDDR |= PIN_RUN_VMON_BAT;
-    PIN_BOARD_REV_ID_GPIO->PDOR |= PIN_BOARD_REV_ID;
-    PIN_BOARD_REV_ID_GPIO->PDDR |= PIN_BOARD_REV_ID;
+    PIN_HID_LED_GPIO->PDDR |= PIN_HID_LED;
+    PIN_MSC_LED_GPIO->PDDR |= PIN_MSC_LED;
+    PIN_CDC_LED_GPIO->PDDR |= PIN_CDC_LED;
+
     // set as input
     PIN_SW_RESET_GPIO->PDDR &= ~PIN_SW_RESET;
 
@@ -92,21 +76,6 @@ void gpio_set_cdc_led(gpio_led_state_t state)
 void gpio_set_msc_led(gpio_led_state_t state)
 {
     (GPIO_LED_ON == state) ? (PIN_MSC_LED_GPIO->PSOR = PIN_MSC_LED) : (PIN_MSC_LED_GPIO->PCOR = PIN_MSC_LED);
-}
-
-//void gpio_set_red_led(gpio_led_state_t state)
-//{
-//    (GPIO_LED_ON == state) ? (PIN_RED_LED_GPIO->PSOR = PIN_RED_LED) : (PIN_RED_LED_GPIO->PCOR = PIN_RED_LED);
-//}
-
-void gpio_set_run_vbat_sense(gpio_state_t state)
-{
-    (GPIO_ON == state) ? (PIN_RUN_VMON_BAT_GPIO->PSOR = PIN_RUN_VMON_BAT) : (PIN_RUN_VMON_BAT_GPIO->PCOR = PIN_RUN_VMON_BAT);
-}
-
-void gpio_set_brd_rev_id(gpio_state_t state)
-{
-    (GPIO_ON == state) ? (PIN_BOARD_REV_ID_GPIO->PSOR = PIN_BOARD_REV_ID) : (PIN_BOARD_REV_ID_GPIO->PCOR = PIN_BOARD_REV_ID);
 }
 
 uint8_t gpio_get_reset_btn_no_fwrd(void)

@@ -1,6 +1,6 @@
 /**
- * @file    kl26z_bl.c
- * @brief   board ID and meta-data for the hardware interface circuit (HIC) based on the NXP KL26Z
+ * @file    kl27z_bl.c
+ * @brief   board ID and meta-data for the hardware interface circuit (HIC) based on the NXP KL27Z
  *
  * DAPLink Interface Firmware
  * Copyright (c) 2009-2019, ARM Limited, All Rights Reserved

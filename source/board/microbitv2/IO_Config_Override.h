@@ -1,6 +1,6 @@
 /**
- * @file    IO_Config.h
- * @brief
+ * @file    IO_Config_Override.h
+ * @brief   Alternative IO for KL27Z based Hardware Interface Circuit
  *
  * DAPLink Interface Firmware
  * Copyright (c) 2009-2016, ARM Limited, All Rights Reserved
@@ -18,14 +18,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-// Override all defines if IO_CONFIG_OVERRIDE is defined
-#ifdef IO_CONFIG_OVERRIDE
-#include "IO_Config_Override.h"
-#ifndef __IO_CONFIG_H__
-#define __IO_CONFIG_H__
-#endif
-#endif
 
 #ifndef __IO_CONFIG_H__
 #define __IO_CONFIG_H__
@@ -65,21 +57,38 @@ COMPILER_ASSERT(DAPLINK_HIC_ID == DAPLINK_HIC_ID_KL27Z);
 #define PIN_HID_LED_GPIO        PTB
 #define PIN_HID_LED_BIT         (0)
 #define PIN_HID_LED             (1<<PIN_HID_LED_BIT)
-#define PIN_HID_LED_MUX_ALT     (1)
+#define PIN_HID_LED_MUX_ALT     (0)
 
 // MSC_LED PTB0
 #define PIN_MSC_LED_PORT        PORTB
 #define PIN_MSC_LED_GPIO        PTB
 #define PIN_MSC_LED_BIT         (0)
 #define PIN_MSC_LED             (1<<PIN_MSC_LED_BIT)
-#define PIN_MSC_LED_MUX_ALT     (1)
+#define PIN_MSC_LED_MUX_ALT     (0)
 
 // CDC_LED PTB0
 #define PIN_CDC_LED_PORT        PORTB
 #define PIN_CDC_LED_GPIO        PTB
 #define PIN_CDC_LED_BIT         (0)
 #define PIN_CDC_LED             (1<<PIN_CDC_LED_BIT)
-#define PIN_CDC_LED_MUX_ALT     (1)
+#define PIN_CDC_LED_MUX_ALT     (0)
+
+// Volatge monitor pins
+
+// Battery Voltage monitor PTB1
+#define PIN_VMON_BAT_PORT      PORTB
+#define PIN_VMON_BAT_GPIO      PTB
+#define PIN_VMON_BAT_BIT       (1)
+#define PIN_VMON_BAT           (1<<PIN_VMON_BAT_BIT)
+#define PIN_VMON_BAT_ALT_MODE  (kPORT_PinDisabledOrAnalog)
+#define PIN_VMON_BAT_ADC_CH    (9)
+#define PIN_VMON_BAT_ADC_MUX   (0)
+
+// Enable Battery Voltage monitor PTC3
+#define PIN_RUN_VBAT_SENSE_PORT  PORTC
+#define PIN_RUN_VBAT_SENSE_GPIO  PTC
+#define PIN_RUN_VBAT_SENSE_BIT   (3)
+#define PIN_RUN_VBAT_SENSE       (1<<PIN_RUN_VBAT_SENSE_BIT)
 
 // Reset pins
 
@@ -90,6 +99,46 @@ COMPILER_ASSERT(DAPLINK_HIC_ID == DAPLINK_HIC_ID_KL27Z);
 #define PIN_SW_RESET            (1<<PIN_SW_RESET_BIT)
 #define SW_RESET_PRESSED        (0)
 #define SW_RESET_NOT_PRESSED    (1)
+#define PIN_SW_RESET_LLWU_PIN   (14)
+#define PIN_SW_RESET_LLWU_WAKEUP_TYPE   kLLWU_ExternalPinRisingEdge
+#define PIN_SW_RESET_PORT_WAKEUP_TYPE   kPORT_InterruptRisingEdge
+
+// WAKE_ON_EDGE PTC4
+#define PIN_WAKE_ON_EDGE_PORT               PORTC
+#define PIN_WAKE_ON_EDGE_GPIO               PTC
+#define PIN_WAKE_ON_EDGE_BIT                (4)
+#define PIN_WAKE_ON_EDGE                    (1<<PIN_WAKE_ON_EDGE_BIT)
+#define PIN_WAKE_ON_EDGE_LLWU_PIN           (8)
+#define PIN_WAKE_ON_EDGE_LLWU_WAKEUP_TYPE   kLLWU_ExternalPinFallingEdge
+#define PIN_WAKE_ON_EDGE_PORT_WAKEUP_TYPE   kPORT_InterruptFallingEdge
+
+// Power LEDs
+
+// Yellow LED PTB0, configured as HID/MSC/CDC LEDs
+
+// Red Spare LED PTD7
+#define PIN_RED_LED_PORT         PORTD
+#define PIN_RED_LED_GPIO         PTD
+#define PIN_RED_LED_BIT          (7)
+#define PIN_RED_LED              (1<<PIN_RED_LED_BIT)
+
+
+// define the long and short reset button presses
+#define RESET_SHORT_PRESS          8    // x 30ms debounce time =  240ms
+#define RESET_LONG_PRESS           130  // x 30ms debounce time = 3900ms
+#define RESET_MAX_LENGTH_PRESS     RESET_LONG_PRESS
+
+// BOARD REV ID
+#define PIN_BOARD_REV_ID_PORT     PORTD
+#define PIN_BOARD_REV_ID_GPIO     PTD
+#define PIN_BOARD_REV_ID_BIT      (6)
+#define PIN_BOARD_REV_ID          (1<<PIN_BOARD_REV_ID_BIT)
+#define PIN_BOARD_REV_ID_ADC_CH   (7)
+#define PIN_BOARD_REV_ID_ADC_MUX  (1)
+
+// Connected LED                Not available
+
+// Target Running LED           Not available
 
 // UART
 #define UART_PORT               PORTA

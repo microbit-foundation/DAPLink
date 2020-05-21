@@ -31,6 +31,8 @@
 #include "main.h"
 #include "i2c.h"
 #include "adc.h"
+#include "fsl_port.h"
+#include "fsl_gpio.h"
 
 #ifdef DRAG_N_DROP_SUPPORT
 #include "flash_intf.h"
@@ -82,28 +84,37 @@ static power_source_t power_source;
 // Board Rev ID detection. Reads BRD_REV_ID voltage
 // Depends on gpio_init() to have been executed already
 static mb_version_t read_brd_rev_id_pin(void) {
+    gpio_pin_config_t pin_config = {
+        .pinDirection = kGPIO_DigitalOutput,
+        .outputLogic = 0U
+    };
     mb_version_t board_version = BOARD_VERSION_2_0;
     uint32_t board_rev_id_adc = 0;
     uint32_t board_rev_id_mv = 0;
+
+    // Set Board Rev ID pin as output but pin disabled
+    PORT_SetPinMux(PIN_BOARD_REV_ID_PORT , PIN_BOARD_REV_ID_BIT,  kPORT_PinDisabledOrAnalog);
+    PORT_SetPinDriveStrength(PIN_BOARD_REV_ID_PORT, PIN_BOARD_REV_ID_BIT, kPORT_HighDriveStrength);
+    GPIO_PinInit(PIN_BOARD_REV_ID_GPIO, PIN_BOARD_REV_ID_BIT, &pin_config);
 
     adc_init();
     
     // 1. Discharge capacitor
     //    Drive BRD_REV_ID pin to low
-    gpio_set_brd_rev_id(GPIO_OFF);
-    PIN_BOARD_REV_ID_PORT->PCR[PIN_BOARD_REV_ID_BIT] |= PORT_PCR_MUX(1);
+    GPIO_PortClear(PIN_BOARD_REV_ID_GPIO, PIN_BOARD_REV_ID);
+    PORT_SetPinMux(PIN_BOARD_REV_ID_PORT , PIN_BOARD_REV_ID_BIT,  kPORT_MuxAsGpio);
     //    Add a 3ms delay to allow the 100nF Cap to discharge 
     //    at least 5*RC with 4700R.
     for (uint32_t count = 16 * 3000; count > 0UL; count--);
     
     // 2. Charge capacitor for 100us
     //    Drive BRD_REV_ID pin to high
-    gpio_set_brd_rev_id(GPIO_ON);
+    GPIO_PortSet(PIN_BOARD_REV_ID_GPIO, PIN_BOARD_REV_ID);
     //    Add a ~100us delay
     //    3 clock cycles per loop at -O2 ARMCC optimization
     for (uint32_t count = 1600; count > 0UL; count--);
     //    Change pin to ADC (High-Z). Capacitor will stop charging
-    PIN_BOARD_REV_ID_PORT->PCR[PIN_BOARD_REV_ID_BIT] &= ~PORT_PCR_MUX(1);
+    PORT_SetPinMux(PIN_BOARD_REV_ID_PORT , PIN_BOARD_REV_ID_BIT,  kPORT_PinDisabledOrAnalog);
     
     // 3. Take ADC measurement
     board_rev_id_adc = adc_read_channel(0, PIN_BOARD_REV_ID_ADC_CH, PIN_BOARD_REV_ID_ADC_MUX);
@@ -111,8 +122,8 @@ static mb_version_t read_brd_rev_id_pin(void) {
     
     // 4. Discharge capacitor
     //    Drive BRD_REV_ID pin to low
-    gpio_set_brd_rev_id(GPIO_OFF);
-    PIN_BOARD_REV_ID_PORT->PCR[PIN_BOARD_REV_ID_BIT] |= PORT_PCR_MUX(1);
+    GPIO_PortClear(PIN_BOARD_REV_ID_GPIO, PIN_BOARD_REV_ID);
+    PORT_SetPinMux(PIN_BOARD_REV_ID_PORT , PIN_BOARD_REV_ID_BIT,  kPORT_MuxAsGpio);
     //    Add a 3ms delay to allow the 100nF Cap to discharge 
     //    at least 5*RC with 4700R.
     for (uint32_t count = 16 * 3000; count > 0UL; count--);
@@ -159,6 +170,7 @@ static void prerun_board_config(void)
     set_board_id(board_version);
     
     // init power monitoring
+    power_init();
     pwr_mon_init();
 
     power_source = pwr_mon_get_power_source();
@@ -176,8 +188,6 @@ static void prerun_board_config(void)
     }
     uint8_t gamma_led_dc = get_led_gamma(power_led_max_duty_cycle);
     flexio_pwm_set_dutycycle(gamma_led_dc);
-
-    power_init();
     
     i2c_initialize();
 }
@@ -185,7 +195,7 @@ static void prerun_board_config(void)
 // Handle the reset button behavior, this function is called in the main task every 30ms
 void handle_reset_button()
 {
-	// button state
+    // button state
     static uint8_t reset_pressed = 0;
     // reset button state count
     static uint16_t gpio_reset_count = 0;
@@ -248,15 +258,11 @@ void board_30ms_hook()
     if (usb_state == USB_CONNECTED) {
       // configure pin as GPIO
       PIN_HID_LED_PORT->PCR[PIN_HID_LED_BIT] = PORT_PCR_MUX(1);
-      PIN_MSC_LED_PORT->PCR[PIN_MSC_LED_BIT] = PORT_PCR_MUX(1);
-      PIN_CDC_LED_PORT->PCR[PIN_CDC_LED_BIT] = PORT_PCR_MUX(1);
       power_led_max_duty_cycle = 100;
     }
     else if (usb_state == USB_DISCONNECTED) {
       // Disable pin
       PIN_HID_LED_PORT->PCR[PIN_HID_LED_BIT] = PORT_PCR_MUX(0);
-      PIN_MSC_LED_PORT->PCR[PIN_MSC_LED_BIT] = PORT_PCR_MUX(0);
-      PIN_CDC_LED_PORT->PCR[PIN_CDC_LED_BIT] = PORT_PCR_MUX(0);
       power_led_max_duty_cycle = PWR_LED_ON_BATT_BRIGHTNESS;
     }
 
@@ -365,3 +371,4 @@ const board_info_t g_board_info = {
     .prerun_board_config = prerun_board_config,
     .target_cfg = &target_device,
 };
+

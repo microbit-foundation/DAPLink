@@ -4,11 +4,9 @@
  */
 
 #include "adc.h"
-
-
+#include "fsl_adc16.h"
 
 #define ADC_BASE    ADC0
-
 
 void adc_init(void)
 {
@@ -30,7 +28,7 @@ void adc_init(void)
 
 void adc_init_pins()
 {
-    PIN_VMON_BAT_PORT->PCR[PIN_VMON_BAT_BIT] = PORT_PCR_MUX(PIN_VMON_BAT_ALT_MODE);
+
 }
 
 uint32_t adc_read_channel(uint32_t channelGroup, uint32_t channelNumber, uint32_t channelMux)

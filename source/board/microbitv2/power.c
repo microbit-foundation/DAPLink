@@ -63,6 +63,9 @@ void PORTCD_IRQHandler(void)
 
 void power_init(void)
 {
+    // Configure pin as GPIO
+    PORT_SetPinMux(PIN_WAKE_ON_EDGE_PORT, PIN_WAKE_ON_EDGE_BIT, kPORT_MuxAsGpio);
+    
     /* Power related. */
     SMC_SetPowerModeProtection(SMC, kSMC_AllowPowerModeAll);
     if (kRCM_SourceWakeup & RCM_GetPreviousResetSources(RCM)) /* Wakeup from VLLS. */
