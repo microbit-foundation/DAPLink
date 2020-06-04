@@ -16,31 +16,13 @@
 #define RX_CMDS_LENGTH              5
 #define I2C_CMD_SLEEP               0xABU
 
-static void i2c_cmd_sleep_callback(void);
-
-typedef struct _cmd_callback {
-    uint8_t cmdValue;
-    void (*callback)();
-} cmd_callback_t;
-
-static cmd_callback_t i2cSleepCmd = {
-    .cmdValue = I2C_CMD_SLEEP,
-    .callback = i2c_cmd_sleep_callback,
-};
-
-static cmd_callback_t *rx_cmds[RX_CMDS_LENGTH];
-
 static uint8_t g_slave_buff[I2C_DATA_LENGTH];
 static i2c_slave_handle_t g_s_handle;
 static volatile bool g_SlaveCompletionFlag = false;
 static volatile bool g_SlaveRxFlag = false;
 
-bool go_to_sleep = false;
-
-
-static void i2c_cmd_sleep_callback() {
-    go_to_sleep = true;
-}
+static i2cWriteCallback_t pfWriteCallback = NULL;
+static i2cReadCallback_t pfReadCallback = NULL;
 
 static void i2c_slave_callback(I2C_Type *base, i2c_slave_transfer_t *xfer, void *userData) {
     switch (xfer->event)
@@ -53,9 +35,6 @@ static void i2c_slave_callback(I2C_Type *base, i2c_slave_transfer_t *xfer, void 
         /*  Transmit request */
         case kI2C_SlaveTransmitEvent:
             /*  Update information for transmit process */
-            for (uint32_t i = 0U; i < I2C_DATA_LENGTH; i++) {
-                    g_slave_buff[i] = i;
-            }
             xfer->data     = g_slave_buff;
             xfer->dataSize = I2C_DATA_LENGTH;
             break;
@@ -81,14 +60,16 @@ static void i2c_slave_callback(I2C_Type *base, i2c_slave_transfer_t *xfer, void 
             // Default driver couldn't differentiate between RX or TX completion
             // Check flag set in kI2C_SlaveReceiveEvent
             if (g_SlaveRxFlag) {
-                // Check all registered commands
-                for (uint8_t i = 0; i < RX_CMDS_LENGTH; i++) {
-                    if (rx_cmds[i] != NULL && (g_slave_buff[0] == (rx_cmds[i])->cmdValue)) {
-                        rx_cmds[i]->callback();
-                    }
+                g_SlaveRxFlag = false;
+                
+                if (pfWriteCallback) {
+                    pfWriteCallback(&g_slave_buff[0], xfer->transferredCount);
+                }
+            } else { 
+                if (pfReadCallback) {
+                    pfReadCallback(&g_slave_buff[0], xfer->transferredCount);
                 }
             }
-            g_SlaveRxFlag = false;
             break;
 
         default:
@@ -136,22 +117,10 @@ static int32_t i2c_start_transfer(void) {
     return 1;
 }
 
-static status_t i2c_slave_register_cmd_callback(cmd_callback_t *cmdCalback) {
-    for (uint8_t i = 0; i < RX_CMDS_LENGTH; i++) {
-        if (rx_cmds[i] == NULL) {
-            rx_cmds[i] = cmdCalback;
-            return kStatus_Success;
-        }
-    }
-    return kStatus_Fail;
-}
-
 int32_t i2c_initialize(void) {
     i2c_slave_config_t slaveConfig;
     
     i2c_init_pins();
-
-    status_t cmd_register_status = i2c_slave_register_cmd_callback(&i2cSleepCmd);
 
     I2C_SlaveGetDefaultConfig(&slaveConfig);
 
@@ -169,5 +138,29 @@ int32_t i2c_initialize(void) {
 int32_t i2c_deinitialize(void) {
     I2C_SlaveDeinit(I2C_SLAVE_BASEADDR);
     return 1;
+}
+
+void i2c_RegisterWriteCallback(i2cWriteCallback_t writeCallback)
+{
+    pfWriteCallback = writeCallback;
+    return;
+}
+
+void i2c_RegisterReadCallback(i2cReadCallback_t readCallback)
+{
+    pfReadCallback = readCallback;
+    return;
+}
+
+void i2c_fillBuffer (uint8_t* data, uint8_t size) {
+    if (size > I2C_DATA_LENGTH) {
+        size = I2C_DATA_LENGTH;
+    }
+    
+    memset(&g_slave_buff, 0, sizeof(g_slave_buff));
+    
+    for (uint32_t i = 0U; i < size; i++) { 
+            g_slave_buff[i] = data[i];
+    }
 }
 

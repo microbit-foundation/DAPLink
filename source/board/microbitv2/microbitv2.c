@@ -30,6 +30,7 @@
 #include "pwr_mon.h"
 #include "main.h"
 #include "i2c.h"
+#include "i2c_commands.h"
 #include "adc.h"
 #include "fsl_port.h"
 #include "fsl_gpio.h"
@@ -74,11 +75,14 @@ typedef enum main_shutdown_state {
 
 extern void main_powerdown_event(void);
 
+static void i2c_write_callback(uint8_t* pData, uint8_t size);
+static void i2c_read_callback(uint8_t* pData, uint8_t size);
+
 // shutdown state
 static main_shutdown_state_t main_shutdown_state = MAIN_SHUTDOWN_WAITING;
 static uint8_t shutdown_led_dc = 100;
 static uint8_t power_led_max_duty_cycle = 100;
-static app_power_mode_t interface_power_mode;
+static app_power_mode_t interface_power_mode = kAPP_PowerModeVlls0;
 static power_source_t power_source;
 
 // Board Rev ID detection. Reads BRD_REV_ID voltage
@@ -190,6 +194,18 @@ static void prerun_board_config(void)
     flexio_pwm_set_dutycycle(gamma_led_dc);
     
     i2c_initialize();
+    i2c_RegisterWriteCallback(i2c_write_callback);
+    i2c_RegisterReadCallback(i2c_read_callback);
+    
+    gpio_pin_config_t pin_config = {
+        .pinDirection = kGPIO_DigitalOutput,
+        .outputLogic = 0U
+    };
+
+    /* COMBINED_SENSOR_INT pin mux ALT0 (Disabled High-Z) */
+    PORT_SetPinMux(COMBINED_SENSOR_INT_PORT, COMBINED_SENSOR_INT_PIN, kPORT_PinDisabledOrAnalog);
+    /* COMBINED_SENSOR_INT as output default low when pin mux ALT1 */
+    GPIO_PinInit(COMBINED_SENSOR_INT_GPIO, COMBINED_SENSOR_INT_PIN, &pin_config);
 }
 
 // Handle the reset button behavior, this function is called in the main task every 30ms
@@ -226,6 +242,7 @@ void handle_reset_button()
         }
         else if (gpio_reset_count >= RESET_LONG_PRESS) {
             // Indicate the button has been released when shutdown is requested
+            interface_power_mode = kAPP_PowerModeVlls0;
             main_shutdown_state = MAIN_SHUTDOWN_REQUESTED;
         }
     } else if (reset_pressed && gpio_get_reset_btn_fwrd()) {
@@ -249,11 +266,6 @@ void handle_reset_button()
 void board_30ms_hook()
 {
   static uint8_t blink_in_progress = 0;
-  
-    if (go_to_sleep) {
-        go_to_sleep = false;
-        main_shutdown_state = MAIN_SHUTDOWN_REQUESTED;
-    }
     
     if (usb_state == USB_CONNECTED) {
       // configure pin as GPIO
@@ -289,7 +301,6 @@ void board_30ms_hook()
       case MAIN_SHUTDOWN_REQUESTED:
           // TODO:  put nRF into deep sleep and wake nRF when KL27 wakes up
           if (power_source == PWR_BATT_ONLY || usb_state == USB_DISCONNECTED) {
-              interface_power_mode = kAPP_PowerModeVlls0;
               main_powerdown_event();
           }
           main_shutdown_state = MAIN_SHUTDOWN_WAITING;
@@ -371,4 +382,141 @@ const board_info_t g_board_info = {
     .prerun_board_config = prerun_board_config,
     .target_cfg = &target_device,
 };
+
+static void i2c_write_callback(uint8_t* pData, uint8_t size) {
+    i2cCommand_t* pI2cCommand = (i2cCommand_t*) pData;
+    i2cCommand_t i2cResponse = {0};
+
+    switch (pI2cCommand->cmdId) {
+        case gReadRequest_c:
+            i2cResponse.cmdId = gReadResponse_c;
+            i2cResponse.cmdData.readRspCmd.propertyId = pI2cCommand->cmdData.readReqCmd.propertyId;
+            switch (pI2cCommand->cmdData.readReqCmd.propertyId) {
+                case gDAPLinkBoardVersion_c:
+                    i2cResponse.cmdData.readRspCmd.dataSize = sizeof(board_id_hex);
+                    memcpy(&i2cResponse.cmdData.readRspCmd.data, &board_id_hex, sizeof(board_id_hex));
+                break;
+                case gI2CProtocolVersion_c: {
+                    uint32_t i2c_version = 1;
+                    i2cResponse.cmdData.readRspCmd.dataSize = sizeof(i2c_version);
+                    memcpy(&i2cResponse.cmdData.readRspCmd.data, &i2c_version, sizeof(i2c_version));
+                }
+                break;
+                case gDAPLinkVersion_c: {
+                    uint32_t daplink_version = DAPLINK_VERSION;
+                    i2cResponse.cmdData.readRspCmd.dataSize = sizeof(daplink_version);
+                    memcpy(&i2cResponse.cmdData.readRspCmd.data, &daplink_version, sizeof(daplink_version));
+                }
+                break;
+                case gPowerState_c:
+                    i2cResponse.cmdData.readRspCmd.dataSize = sizeof(power_source);
+                    memcpy(&i2cResponse.cmdData.readRspCmd.data, &power_source, sizeof(power_source));
+                break;
+                case gPowerConsumption_c: {
+                    uint32_t power_consumption = 1;
+                    i2cResponse.cmdData.readRspCmd.dataSize = sizeof(power_consumption);
+                    memcpy(&i2cResponse.cmdData.readRspCmd.data, &power_consumption, sizeof(power_consumption));
+                }
+                break;
+                case gUSBEnumerationState_c:
+                    i2cResponse.cmdData.readRspCmd.dataSize = sizeof(usb_state);
+                    memcpy(&i2cResponse.cmdData.readRspCmd.data, &usb_state, sizeof(usb_state));
+                break;
+                case gPowerMode_c:
+                case gNRFPowerMode_c:
+                    i2cResponse.cmdId = gErrorResponse_c;
+                    i2cResponse.cmdData.errorRspCmd.errorCode = gErrorReadDisallowed_c;
+                break;
+                default:
+                    i2cResponse.cmdId = gErrorResponse_c;
+                    i2cResponse.cmdData.errorRspCmd.errorCode = gErrorUnknownProperty_c;
+                break;
+            }
+        break;
+        case gReadResponse_c:
+            i2cResponse.cmdId = gErrorResponse_c;
+            i2cResponse.cmdData.errorRspCmd.errorCode = gErrorCommandDisallowed_c;
+        break;
+        case gWriteRequest_c:
+            switch (pI2cCommand->cmdData.writeReqCmd.propertyId) {
+                case gDAPLinkBoardVersion_c:
+                case gI2CProtocolVersion_c:
+                case gDAPLinkVersion_c:
+                case gPowerState_c:
+                case gPowerConsumption_c:
+                case gUSBEnumerationState_c:
+                    i2cResponse.cmdId = gErrorResponse_c;
+                    i2cResponse.cmdData.errorRspCmd.errorCode = gErrorWriteDisallowed_c;
+                break;
+                case gPowerMode_c:
+                    if (pI2cCommand->cmdData.writeReqCmd.dataSize == 1) {
+                        if (pI2cCommand->cmdData.writeReqCmd.data[0] == kAPP_PowerModeVlls0) {
+                            if (power_source == PWR_BATT_ONLY || usb_state == USB_DISCONNECTED) {
+                                interface_power_mode = kAPP_PowerModeVlls0;
+                                i2cResponse.cmdId = gWriteResponse_c;
+                                i2cResponse.cmdData.writeRspCmd.propertyId = pI2cCommand->cmdData.writeReqCmd.propertyId;
+                            } else {
+                                i2cResponse.cmdId = gErrorResponse_c;
+                                i2cResponse.cmdData.errorRspCmd.errorCode = gErrorWriteDisallowed_c;
+                            }
+                        } else if (pI2cCommand->cmdData.writeReqCmd.data[0] == kAPP_PowerModeVlps) {
+                            if (power_source == PWR_BATT_ONLY || usb_state == USB_DISCONNECTED) {
+                                interface_power_mode = kAPP_PowerModeVlps;
+                                i2cResponse.cmdId = gWriteResponse_c;
+                                i2cResponse.cmdData.writeRspCmd.propertyId = pI2cCommand->cmdData.writeReqCmd.propertyId;
+                            } else {
+                                i2cResponse.cmdId = gErrorResponse_c;
+                                i2cResponse.cmdData.errorRspCmd.errorCode = gErrorWriteDisallowed_c;
+                            }
+                        } else { 
+                            i2cResponse.cmdId = gErrorResponse_c;
+                            i2cResponse.cmdData.errorRspCmd.errorCode = gErrorWriteFail_c;
+                        }
+                    } else {
+                        i2cResponse.cmdId = gErrorResponse_c;
+                        i2cResponse.cmdData.errorRspCmd.errorCode = gErrorWrongPropertySize_c;
+                    }
+                break;
+                case gNRFPowerMode_c:
+                    i2cResponse.cmdId = gErrorResponse_c;
+                    i2cResponse.cmdData.errorRspCmd.errorCode = gErrorWriteDisallowed_c;
+                break;
+                default:
+                    i2cResponse.cmdId = gErrorResponse_c;
+                    i2cResponse.cmdData.errorRspCmd.errorCode = gErrorUnknownProperty_c;
+                break;
+            }
+        break;
+        case gWriteResponse_c:
+        break;
+        case gErrorResponse_c:
+        break;
+        default:
+            i2cResponse.cmdId = gErrorResponse_c;
+            i2cResponse.cmdData.errorRspCmd.errorCode = gErrorUnknownProperty_c;
+        break;
+    }
+    
+    i2c_fillBuffer((uint8_t*) &i2cResponse, sizeof(i2cResponse));
+    
+    // Response ready, assert COMBINED_SENSOR_INT
+    PORT_SetPinMux(COMBINED_SENSOR_INT_PORT, COMBINED_SENSOR_INT_PIN, kPORT_MuxAsGpio);
+}
+
+static void i2c_read_callback(uint8_t* pData, uint8_t size) {
+    i2cCommand_t* pI2cCommand = (i2cCommand_t*) pData;
+
+    switch (pI2cCommand->cmdId) {
+        case gWriteResponse_c:
+            switch (pI2cCommand->cmdData.writeRspCmd.propertyId) {
+                case gPowerMode_c:
+                    main_shutdown_state = MAIN_SHUTDOWN_REQUESTED;
+                break;
+            }
+        break;
+    }
+    
+    // Release COMBINED_SENSOR_INT
+    PORT_SetPinMux(COMBINED_SENSOR_INT_PORT, COMBINED_SENSOR_INT_PIN, kPORT_PinDisabledOrAnalog);
+}
 
