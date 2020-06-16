@@ -138,6 +138,8 @@ static void erase_target(void);
 
 static uint32_t expand_info(uint8_t *buf, uint32_t bufsize);
 
+__WEAK void board_error_hook(error_t error){}
+
 void vfs_user_build_filesystem()
 {
     uint32_t file_size;
@@ -155,6 +157,7 @@ void vfs_user_build_filesystem()
     if (vfs_mngr_get_transfer_status() != ERROR_SUCCESS) {
         file_size = get_file_size(read_file_fail_txt);
         vfs_create_file("FAIL    TXT", read_file_fail_txt, 0, file_size);
+        board_error_hook(vfs_mngr_get_transfer_status());
     }
 
     // ASSERT.TXT
