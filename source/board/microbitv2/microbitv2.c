@@ -358,15 +358,16 @@ void board_handle_powerdown()
 void board_error_hook(error_t error) {
     error_t ret;
     
-    nrf52833_xxaa_bin[1984] = (uint8_t) error & 0xFF;
-    nrf52833_xxaa_bin[1985] = (uint8_t) (error >> 8) & 0xFF;
+    // Error code offset afet "SAEP" magic word
+    led_error_bin_data[1928] = (uint8_t) error & 0xFF;
+    led_error_bin_data[1929] = (uint8_t) (error >> 8) & 0xFF;
 
     ret = flash_manager_init(flash_intf_target);
     if (ret != ERROR_SUCCESS) {
         util_assert(0);
     }
 
-    ret = flash_manager_data(0, (const uint8_t*)nrf52833_xxaa_bin, nrf52833_xxaa_bin_len);
+    ret = flash_manager_data(0, (const uint8_t*)led_error_bin_data, led_error_bin_len);
     if (ret != ERROR_SUCCESS) {
         flash_manager_uninit();
         util_assert(0);
