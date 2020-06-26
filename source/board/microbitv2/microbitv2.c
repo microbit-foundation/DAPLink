@@ -204,10 +204,10 @@ static void prerun_board_config(void)
         .outputLogic = 0U
     };
 
-    /* COMBINED_SENSOR_INT pin mux ALT0 (Disabled High-Z) */
-    PORT_SetPinMux(COMBINED_SENSOR_INT_PORT, COMBINED_SENSOR_INT_PIN, kPORT_PinDisabledOrAnalog);
-    /* COMBINED_SENSOR_INT as output default low when pin mux ALT1 */
-    GPIO_PinInit(COMBINED_SENSOR_INT_GPIO, COMBINED_SENSOR_INT_PIN, &pin_config);
+    // /* COMBINED_SENSOR_INT pin mux ALT0 (Disabled High-Z) */
+    // PORT_SetPinMux(COMBINED_SENSOR_INT_PORT, COMBINED_SENSOR_INT_PIN, kPORT_PinDisabledOrAnalog);
+    // /* COMBINED_SENSOR_INT as output default low when pin mux ALT1 */
+    // GPIO_PinInit(COMBINED_SENSOR_INT_GPIO, COMBINED_SENSOR_INT_PIN, &pin_config);
 }
 
 // Handle the reset button behavior, this function is called in the main task every 30ms
@@ -527,8 +527,8 @@ static void i2c_write_callback(uint8_t* pData, uint8_t size) {
     
     i2c_fillBuffer((uint8_t*) &i2cResponse, sizeof(i2cResponse));
     
-    // Response ready, assert COMBINED_SENSOR_INT
-    PORT_SetPinMux(COMBINED_SENSOR_INT_PORT, COMBINED_SENSOR_INT_PIN, kPORT_MuxAsGpio);
+    // // Response ready, assert COMBINED_SENSOR_INT
+    // PORT_SetPinMux(COMBINED_SENSOR_INT_PORT, COMBINED_SENSOR_INT_PIN, kPORT_MuxAsGpio);
 }
 
 static void i2c_read_callback(uint8_t* pData, uint8_t size) {
@@ -544,7 +544,7 @@ static void i2c_read_callback(uint8_t* pData, uint8_t size) {
         break;
     }
     
-    // Release COMBINED_SENSOR_INT
-    PORT_SetPinMux(COMBINED_SENSOR_INT_PORT, COMBINED_SENSOR_INT_PIN, kPORT_PinDisabledOrAnalog);
+    // // Release COMBINED_SENSOR_INT
+    // PORT_SetPinMux(COMBINED_SENSOR_INT_PORT, COMBINED_SENSOR_INT_PIN, kPORT_PinDisabledOrAnalog);
 }
 
