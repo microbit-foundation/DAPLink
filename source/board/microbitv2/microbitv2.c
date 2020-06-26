@@ -360,9 +360,9 @@ void board_handle_powerdown()
 void board_error_hook(error_t error) {
     error_t ret;
     
-    // Error code offset afet "SAEP" magic word
-    led_error_bin_data[1928] = (uint8_t) error & 0xFF;
-    led_error_bin_data[1929] = (uint8_t) (error >> 8) & 0xFF;
+    // Error code offset after "0xFACEC0DE" magic word
+    led_error_bin_data[led_error_bin_code] = (uint8_t) error & 0xFF;
+    led_error_bin_data[led_error_bin_code + 1] = (uint8_t) (error >> 8) & 0xFF;
 
     ret = flash_manager_init(flash_intf_target);
     if (ret != ERROR_SUCCESS) {
