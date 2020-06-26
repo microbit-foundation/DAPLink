@@ -282,8 +282,8 @@ void board_30ms_hook()
 
     switch (main_shutdown_state) {
       case MAIN_LED_FULL_BRIGHTNESS:
-          // Jump power LED to full brightness
-          shutdown_led_dc = 100;
+          // Jump power LED to 80%? brightness
+          shutdown_led_dc = 80;
           break;
       case MAIN_SHUTDOWN_CANCEL:
           main_shutdown_state = MAIN_SHUTDOWN_WAITING;
@@ -297,8 +297,10 @@ void board_30ms_hook()
           }
           break;
       case MAIN_SHUTDOWN_REACHED:
-          // Turn off LED to indicate we are waiting for release
-          shutdown_led_dc = 0;
+          // Fast fade to off
+          if (shutdown_led_dc > 0) {
+              shutdown_led_dc--;
+          }
           break;
       case MAIN_SHUTDOWN_REQUESTED:
           // TODO:  put nRF into deep sleep and wake nRF when KL27 wakes up
