@@ -9,7 +9,7 @@
 #define I2C_SLAVE_CLK_SRC I2C1_CLK_SRC
 #define I2C_SLAVE_CLK_FREQ CLOCK_GetFreq(I2C1_CLK_SRC)
 
-#define I2C_MASTER_SLAVE_ADDR_7BIT  0x7AU
+#define I2C_MASTER_SLAVE_ADDR_7BIT  0x70U
 #define I2C_DATA_LENGTH             (32U)
 
 // We'll start with 5 RX commands
