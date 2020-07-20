@@ -36,6 +36,7 @@
 #include "fsl_gpio.h"
 #include "led_error_app.h"
 #include "flash_manager.h"
+#include "vfs_manager.h"
 
 #ifdef DRAG_N_DROP_SUPPORT
 #include "flash_intf.h"
@@ -357,27 +358,30 @@ void board_handle_powerdown()
     gpio_set_hid_led(HID_LED_DEF);
 }
 
-void board_error_hook(error_t error) {
-    error_t ret;
-    
-    // Error code offset after "0xFACEC0DE" magic word
-    led_error_bin_data[led_error_bin_code] = (uint8_t) error & 0xFF;
-    led_error_bin_data[led_error_bin_code + 1] = (uint8_t) (error >> 8) & 0xFF;
+void vfs_user_build_filesystem_hook() {
+    error_t status;
+    error_t error = vfs_mngr_get_transfer_status();
 
-    ret = flash_manager_init(flash_intf_target);
-    if (ret != ERROR_SUCCESS) {
-        util_assert(0);
-    }
+    if (error != ERROR_SUCCESS) {
+        // Error code offset after "0xFACEC0DE" magic word
+        led_error_bin_data[led_error_bin_code] = (uint8_t) error & 0xFF;
+        led_error_bin_data[led_error_bin_code + 1] = (uint8_t) (error >> 8) & 0xFF;
 
-    ret = flash_manager_data(0, (const uint8_t*)led_error_bin_data, led_error_bin_len);
-    if (ret != ERROR_SUCCESS) {
-        flash_manager_uninit();
-        util_assert(0);
-    }
+        status = flash_manager_init(flash_intf_target);
+        if (status != ERROR_SUCCESS) {
+            util_assert(0);
+        }
 
-    ret = flash_manager_uninit();
-    if (ret != ERROR_SUCCESS) {
-        util_assert(0);
+        status = flash_manager_data(0, (const uint8_t*)led_error_bin_data, led_error_bin_len);
+        if (status != ERROR_SUCCESS) {
+            flash_manager_uninit();
+            util_assert(0);
+        }
+
+        status = flash_manager_uninit();
+        if (status != ERROR_SUCCESS) {
+            util_assert(0);
+        }
     }
 }
 

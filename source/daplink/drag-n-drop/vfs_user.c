@@ -138,7 +138,7 @@ static void erase_target(void);
 
 static uint32_t expand_info(uint8_t *buf, uint32_t bufsize);
 
-__WEAK void board_error_hook(error_t error){}
+__WEAK void vfs_user_build_filesystem_hook(){}
 
 void vfs_user_build_filesystem()
 {
@@ -157,7 +157,6 @@ void vfs_user_build_filesystem()
     if (vfs_mngr_get_transfer_status() != ERROR_SUCCESS) {
         file_size = get_file_size(read_file_fail_txt);
         vfs_create_file("FAIL    TXT", read_file_fail_txt, 0, file_size);
-        board_error_hook(vfs_mngr_get_transfer_status());
     }
 
     // ASSERT.TXT
@@ -180,6 +179,8 @@ void vfs_user_build_filesystem()
         file_size = get_file_size(read_file_need_bl_txt);
         vfs_create_file("NEED_BL TXT", read_file_need_bl_txt, 0, file_size);
     }
+    
+    vfs_user_build_filesystem_hook();
 }
 
 // Default file change hook.
