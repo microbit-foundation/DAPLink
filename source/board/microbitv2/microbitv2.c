@@ -36,6 +36,7 @@
 #include "fsl_gpio.h"
 #include "led_error_app.h"
 #include "flash_manager.h"
+#include "virtual_fs.h"
 #include "vfs_manager.h"
 
 #ifdef DRAG_N_DROP_SUPPORT
@@ -80,6 +81,7 @@ extern void main_powerdown_event(void);
 
 static void i2c_write_callback(uint8_t* pData, uint8_t size);
 static void i2c_read_callback(uint8_t* pData, uint8_t size);
+static uint32_t read_file_data_txt(uint32_t sector_offset, uint8_t *data, uint32_t num_sectors);
 
 // shutdown state
 static main_shutdown_state_t main_shutdown_state = MAIN_SHUTDOWN_WAITING;
@@ -359,6 +361,7 @@ void board_handle_powerdown()
 }
 
 void vfs_user_build_filesystem_hook() {
+    uint32_t file_size;
     error_t status;
     error_t error = vfs_mngr_get_transfer_status();
 
@@ -383,6 +386,18 @@ void vfs_user_build_filesystem_hook() {
             util_assert(0);
         }
     }
+    
+    //DATA.BIN
+    file_size = 256*1024;
+    vfs_create_file("DATA    BIN", read_file_data_txt, 0, file_size);
+}
+
+// File callback to be used with vfs_add_file to return file contents
+static uint32_t read_file_data_txt(uint32_t sector_offset, uint8_t *data, uint32_t num_sectors)
+{
+    memcpy(data, (uint8_t *) (0x00000000 + VFS_SECTOR_SIZE * sector_offset), VFS_SECTOR_SIZE);
+
+    return VFS_SECTOR_SIZE;
 }
 
 uint8_t board_detect_incompatible_image(const uint8_t *data, uint32_t size)
