@@ -84,6 +84,57 @@ typedef __PACKED_STRUCT i2cCommand_tag {
     } cmdData;
 } i2cCommand_t;
 
+typedef struct flashConfig_tag {
+    vfs_filename_t  fileName;
+    uint32_t        fileSize;
+    bool            fileVisible;
+} flashConfig_t;
+
+/*! Flash interface command type */
+typedef enum flashCmdId_tag {
+    gFlashCfgFileName_c     = 0x01,
+    gFlashCfgFileSize_c     = 0x02,
+    gFlashCfgFileVisible_c  = 0x03,
+    gFlashCfgWrite_c        = 0x04,
+    gFlashCfgErase_c        = 0x05,
+    gFlashStorageSize_c     = 0x06,
+    gFlashSectorSize_c      = 0x07,
+    gFlashRemountMSD_c      = 0x08,
+    gFlashStatus_c          = 0x09,
+    gFlashDataRead_c        = 0x0A,
+    gFlashDataWrite_c       = 0x0B,
+    gFlashDataErase_c       = 0x0C,
+    gFlashError_c           = 0x20
+} flashCmdId_t;
+
+typedef __PACKED_STRUCT flashDataWriteCmd_tag {
+    uint8_t addr2;
+    uint8_t addr1;
+    uint8_t addr0;
+    uint32_t length;
+    uint8_t data[1024];
+} flashDataWriteCmd_t;
+
+typedef __PACKED_STRUCT flashDataEraseCmd_tag {
+    uint8_t sAddr2;
+    uint8_t sAddr1;
+    uint8_t sAddr0;
+    uint8_t pad;
+    uint8_t eAddr2;
+    uint8_t eAddr1;
+    uint8_t eAddr0;
+} flashDataEraseCmd_t;
+
+/*! i2c command structure*/
+typedef __PACKED_STRUCT i2cFlashCmd_tag {
+    uint8_t cmdId;
+    __PACKED_UNION {
+        flashDataWriteCmd_t write;
+        flashDataWriteCmd_t read;
+        flashDataEraseCmd_t erase;
+        uint8_t data[1024];
+    } cmdData;
+} i2cFlashCmd_t;
 
 #ifdef __cplusplus
 }
