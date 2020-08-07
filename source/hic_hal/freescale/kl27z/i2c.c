@@ -9,8 +9,9 @@
 #define I2C_SLAVE_CLK_SRC I2C1_CLK_SRC
 #define I2C_SLAVE_CLK_FREQ CLOCK_GetFreq(I2C1_CLK_SRC)
 
-#define I2C_MASTER_SLAVE_ADDR_7BIT  0x70U
-#define I2C_DATA_LENGTH             (32U)
+#define I2C_SLAVE_LOWER_ADDR_7BIT   (0x70U)
+#define I2C_SLAVE_UPPER_ADDR_7BIT   (0x72U)
+#define I2C_DATA_LENGTH             (1024U + 8U)
 
 // We'll start with 5 RX commands
 #define RX_CMDS_LENGTH              5
@@ -20,9 +21,14 @@ static uint8_t g_slave_buff[I2C_DATA_LENGTH];
 static i2c_slave_handle_t g_s_handle;
 static volatile bool g_SlaveCompletionFlag = false;
 static volatile bool g_SlaveRxFlag = false;
+uint8_t address_match = 0;
 
-static i2cWriteCallback_t pfWriteCallback = NULL;
-static i2cReadCallback_t pfReadCallback = NULL;
+static i2cWriteCallback_t pfWriteCommsCallback = NULL;
+static i2cReadCallback_t pfReadCommsCallback = NULL;
+static i2cWriteCallback_t pfWriteHIDCallback = NULL;
+static i2cReadCallback_t pfReadHIDCallback = NULL;
+static i2cWriteCallback_t pfWriteFlashCallback = NULL;
+static i2cReadCallback_t pfReadFlashCallback = NULL;
 
 static void i2c_slave_callback(I2C_Type *base, i2c_slave_transfer_t *xfer, void *userData) {
     switch (xfer->event)
@@ -31,6 +37,8 @@ static void i2c_slave_callback(I2C_Type *base, i2c_slave_transfer_t *xfer, void 
         case kI2C_SlaveAddressMatchEvent:
             xfer->data     = NULL;
             xfer->dataSize = 0;
+            // fsl_i2c.c IRQ updated in fsl_i2c_mod.c to include I2C D register
+            address_match = *(uint8_t*)userData >> 1;
             break;
         /*  Transmit request */
         case kI2C_SlaveTransmitEvent:
@@ -62,12 +70,24 @@ static void i2c_slave_callback(I2C_Type *base, i2c_slave_transfer_t *xfer, void 
             if (g_SlaveRxFlag) {
                 g_SlaveRxFlag = false;
                 
-                if (pfWriteCallback) {
-                    pfWriteCallback(&g_slave_buff[0], xfer->transferredCount);
+                if (pfWriteCommsCallback && address_match == I2C_SLAVE_NRF_KL_COMMS) {
+                    pfWriteCommsCallback(&g_slave_buff[0], xfer->transferredCount);
+                }
+                if (pfWriteHIDCallback && address_match == I2C_SLAVE_HID) {
+                    pfWriteHIDCallback(&g_slave_buff[0], xfer->transferredCount);
+                }
+                if (pfWriteFlashCallback && address_match == I2C_SLAVE_FLASH) {
+                    pfWriteFlashCallback(&g_slave_buff[0], xfer->transferredCount);
                 }
             } else { 
-                if (pfReadCallback) {
-                    pfReadCallback(&g_slave_buff[0], xfer->transferredCount);
+                if (pfReadCommsCallback && address_match == I2C_SLAVE_NRF_KL_COMMS) {
+                    pfReadCommsCallback(&g_slave_buff[0], xfer->transferredCount);
+                }
+                if (pfReadHIDCallback && address_match == I2C_SLAVE_HID) {
+                    pfReadHIDCallback(&g_slave_buff[0], xfer->transferredCount);
+                }
+                if (pfReadFlashCallback && address_match == I2C_SLAVE_FLASH) {
+                    pfReadFlashCallback(&g_slave_buff[0], xfer->transferredCount);
                 }
             }
             break;
@@ -108,7 +128,7 @@ static int32_t i2c_start_transfer(void) {
     memset(&g_s_handle, 0, sizeof(g_s_handle));
 
     I2C_SlaveTransferCreateHandle(I2C_SLAVE_BASEADDR, &g_s_handle,
-            i2c_slave_callback, NULL);
+            i2c_slave_callback, &address_match);
 
     /* Set up slave transfer. */
     I2C_SlaveTransferNonBlocking(I2C_SLAVE_BASEADDR, &g_s_handle,
@@ -124,8 +144,9 @@ int32_t i2c_initialize(void) {
 
     I2C_SlaveGetDefaultConfig(&slaveConfig);
 
-    slaveConfig.addressingMode = kI2C_Address7bit;
-    slaveConfig.slaveAddress   = I2C_MASTER_SLAVE_ADDR_7BIT;
+    slaveConfig.addressingMode = kI2C_RangeMatch;
+    slaveConfig.slaveAddress   = I2C_SLAVE_LOWER_ADDR_7BIT;
+    slaveConfig.upperAddress   = I2C_SLAVE_UPPER_ADDR_7BIT;
     slaveConfig.enableWakeUp   = true;
 
     I2C_SlaveInit(I2C_SLAVE_BASEADDR, &slaveConfig, I2C_SLAVE_CLK_FREQ);
@@ -140,27 +161,61 @@ int32_t i2c_deinitialize(void) {
     return 1;
 }
 
-void i2c_RegisterWriteCallback(i2cWriteCallback_t writeCallback)
+status_t i2c_RegisterWriteCallback(i2cWriteCallback_t writeCallback, uint8_t slaveAddress)
 {
-    pfWriteCallback = writeCallback;
-    return;
-}
-
-void i2c_RegisterReadCallback(i2cReadCallback_t readCallback)
-{
-    pfReadCallback = readCallback;
-    return;
-}
-
-void i2c_fillBuffer (uint8_t* data, uint8_t size) {
-    if (size > I2C_DATA_LENGTH) {
-        size = I2C_DATA_LENGTH;
+    status_t status = kStatus_Success;
+    
+    switch (slaveAddress){
+        case I2C_SLAVE_NRF_KL_COMMS:
+            pfWriteCommsCallback = writeCallback;
+            break;
+        case I2C_SLAVE_HID:
+            pfWriteHIDCallback = writeCallback;
+            break;
+        case I2C_SLAVE_FLASH:
+            pfWriteFlashCallback = writeCallback;
+            break;
+        default:
+            status = kStatus_Fail;
+            break;
     }
     
-    memset(&g_slave_buff, 0, sizeof(g_slave_buff));
+    return status;
+}
+
+status_t i2c_RegisterReadCallback(i2cReadCallback_t readCallback, uint8_t slaveAddress)
+{
+    status_t status = kStatus_Success;
     
-    for (uint32_t i = 0U; i < size; i++) { 
-            g_slave_buff[i] = data[i];
+    switch (slaveAddress) {
+        case I2C_SLAVE_NRF_KL_COMMS:
+            pfReadCommsCallback = readCallback;
+            break;
+        case I2C_SLAVE_HID:
+            pfReadHIDCallback = readCallback;
+            break;
+        case I2C_SLAVE_FLASH:
+            pfReadFlashCallback = readCallback;
+            break;
+        default:
+            status = kStatus_Fail;
+            break;
+    }
+    
+    return status;
+}
+
+void i2c_clearBuffer (void) {
+    memset(&g_slave_buff, 0, sizeof(g_slave_buff));
+}
+
+void i2c_fillBuffer (uint8_t* data, uint32_t position, uint32_t size) {
+    if ((position + size) > I2C_DATA_LENGTH) {
+        return;
+    }
+    
+    for (uint32_t i = 0; i < size; i++) { 
+            g_slave_buff[position + i] = data[i];
     }
 }
 

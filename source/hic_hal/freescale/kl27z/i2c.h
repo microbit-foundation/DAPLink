@@ -8,6 +8,10 @@
 
 #include "fsl_common.h"
 
+#define I2C_SLAVE_NRF_KL_COMMS      (0x70U)
+#define I2C_SLAVE_HID               (0x71U)
+#define I2C_SLAVE_FLASH             (0x72U)
+
 /*! i2c Write Callback prototype */
 typedef void (*i2cWriteCallback_t)
 (
@@ -24,8 +28,9 @@ typedef void (*i2cReadCallback_t)
 
 int32_t i2c_initialize(void);
 int32_t i2c_deinitialize(void);
-void i2c_RegisterWriteCallback(i2cWriteCallback_t writeCallback);
-void i2c_RegisterReadCallback(i2cReadCallback_t readCallback);
-void i2c_fillBuffer(uint8_t* data, uint8_t size);
+status_t i2c_RegisterWriteCallback(i2cWriteCallback_t writeCallback, uint8_t slaveAddress);
+status_t i2c_RegisterReadCallback(i2cReadCallback_t readCallback, uint8_t slaveAddress);
+void i2c_clearBuffer(void); 
+void i2c_fillBuffer(uint8_t* data, uint32_t position, uint32_t size);
 
 #endif /* I2C_H_ */

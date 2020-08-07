@@ -36,7 +36,10 @@
 #include "fsl_gpio.h"
 #include "led_error_app.h"
 #include "flash_manager.h"
+#include "virtual_fs.h"
 #include "vfs_manager.h"
+#include "cortex_m.h"
+#include "FlashPrg.h"
 
 #ifdef DRAG_N_DROP_SUPPORT
 #include "flash_intf.h"
@@ -50,6 +53,8 @@
 
 #define PWR_LED_ON_BATT_BRIGHTNESS      40 // LED Brightness while being powered by battery
 #define PWR_LED_FADEOUT_MIN_BRIGHTNESS  30 // Minimum LED brightness when fading out
+
+#define FLASH_STORAGE_ADDRESS       (0x00020400)
 
 const char * const board_id_mb_2_0 = "9903";
 const char * const board_id_mb_2_1 = "9904";
@@ -79,8 +84,13 @@ typedef enum main_shutdown_state {
 
 extern void main_powerdown_event(void);
 
-static void i2c_write_callback(uint8_t* pData, uint8_t size);
-static void i2c_read_callback(uint8_t* pData, uint8_t size);
+static void i2c_write_comms_callback(uint8_t* pData, uint8_t size);
+static void i2c_read_comms_callback(uint8_t* pData, uint8_t size);
+static void i2c_write_hid_callback(uint8_t* pData, uint8_t size);
+static void i2c_read_hid_callback(uint8_t* pData, uint8_t size);
+static void i2c_write_flash_callback(uint8_t* pData, uint8_t size);
+static void i2c_read_flash_callback(uint8_t* pData, uint8_t size);
+static uint32_t read_file_data_txt(uint32_t sector_offset, uint8_t *data, uint32_t num_sectors);
 
 // shutdown state
 static main_shutdown_state_t main_shutdown_state = MAIN_SHUTDOWN_WAITING;
@@ -91,6 +101,13 @@ static app_power_mode_t interface_power_mode = kAPP_PowerModeVlls0;
 static power_source_t power_source;
 // reset button state count
 static uint16_t gpio_reset_count = 0;
+static bool do_remount = false;
+
+flashConfig_t gflashConfig = {
+    .fileName = "DATA    BIN",
+    .fileSize = 126 * 1024,
+    .fileVisible = false,
+};
 
 // Board Rev ID detection. Reads BRD_REV_ID voltage
 // Depends on gpio_init() to have been executed already
@@ -201,8 +218,10 @@ static void prerun_board_config(void)
     flexio_pwm_set_dutycycle(gamma_led_dc);
     
     i2c_initialize();
-    i2c_RegisterWriteCallback(i2c_write_callback);
-    i2c_RegisterReadCallback(i2c_read_callback);
+    i2c_RegisterWriteCallback(i2c_write_comms_callback, I2C_SLAVE_NRF_KL_COMMS);
+    i2c_RegisterReadCallback(i2c_read_comms_callback, I2C_SLAVE_NRF_KL_COMMS);
+    i2c_RegisterWriteCallback(i2c_write_flash_callback, I2C_SLAVE_FLASH);
+    i2c_RegisterReadCallback(i2c_read_flash_callback, I2C_SLAVE_FLASH);
     
     gpio_pin_config_t pin_config = {
         .pinDirection = kGPIO_DigitalOutput,
@@ -347,6 +366,12 @@ void board_30ms_hook()
     }
     uint8_t gamma_led_dc = get_led_gamma(shutdown_led_dc);
     flexio_pwm_set_dutycycle(gamma_led_dc);
+    
+    // Remount if requested.
+    if (do_remount) {
+        do_remount = false;
+        vfs_mngr_fs_remount();
+    }
 }
 
 void board_handle_powerdown()
@@ -371,6 +396,7 @@ void board_handle_powerdown()
 }
 
 void vfs_user_build_filesystem_hook() {
+    uint32_t file_size;
     error_t status;
     error_t error = vfs_mngr_get_transfer_status();
 
@@ -395,6 +421,22 @@ void vfs_user_build_filesystem_hook() {
             util_assert(0);
         }
     }
+    
+    //DATA.BIN
+    // file_size = 256*1024;
+    file_size = gflashConfig.fileSize;
+    
+    if (gflashConfig.fileVisible) {
+        vfs_create_file(gflashConfig.fileName, read_file_data_txt, 0, file_size);
+    }
+}
+
+// File callback to be used with vfs_add_file to return file contents
+static uint32_t read_file_data_txt(uint32_t sector_offset, uint8_t *data, uint32_t num_sectors)
+{
+    memcpy(data, (uint8_t *) (FLASH_STORAGE_ADDRESS + VFS_SECTOR_SIZE * sector_offset), VFS_SECTOR_SIZE);
+
+    return VFS_SECTOR_SIZE;
 }
 
 uint8_t board_detect_incompatible_image(const uint8_t *data, uint32_t size)
@@ -427,7 +469,7 @@ const board_info_t g_board_info = {
     .target_cfg = &target_device,
 };
 
-static void i2c_write_callback(uint8_t* pData, uint8_t size) {
+static void i2c_write_comms_callback(uint8_t* pData, uint8_t size) {
     i2cCommand_t* pI2cCommand = (i2cCommand_t*) pData;
     i2cCommand_t i2cResponse = {0};
 
@@ -541,13 +583,13 @@ static void i2c_write_callback(uint8_t* pData, uint8_t size) {
         break;
     }
     
-    i2c_fillBuffer((uint8_t*) &i2cResponse, sizeof(i2cResponse));
+    i2c_fillBuffer((uint8_t*) &i2cResponse, 0, sizeof(i2cResponse));
     
     // Response ready, assert COMBINED_SENSOR_INT
     PORT_SetPinMux(COMBINED_SENSOR_INT_PORT, COMBINED_SENSOR_INT_PIN, kPORT_MuxAsGpio);
 }
 
-static void i2c_read_callback(uint8_t* pData, uint8_t size) {
+static void i2c_read_comms_callback(uint8_t* pData, uint8_t size) {
     i2cCommand_t* pI2cCommand = (i2cCommand_t*) pData;
 
     switch (pI2cCommand->cmdId) {
@@ -564,3 +606,100 @@ static void i2c_read_callback(uint8_t* pData, uint8_t size) {
     PORT_SetPinMux(COMBINED_SENSOR_INT_PORT, COMBINED_SENSOR_INT_PIN, kPORT_PinDisabledOrAnalog);
 }
 
+static void i2c_write_flash_callback(uint8_t* pData, uint8_t size) {
+    i2cFlashCmd_t* pI2cCommand = (i2cFlashCmd_t*) pData;
+    
+    uint32_t status;
+    cortex_int_state_t state;
+    
+    i2c_fillBuffer((uint8_t*) pI2cCommand, 0, sizeof(i2cFlashCmd_t) - 1024);
+    
+    uint32_t address = pI2cCommand->cmdData.write.addr2 << 16 |
+                            pI2cCommand->cmdData.write.addr1 << 8 |
+                            pI2cCommand->cmdData.write.addr0 << 0;
+    address = address + FLASH_STORAGE_ADDRESS;
+    uint32_t length = __REV(pI2cCommand->cmdData.write.length);
+    uint32_t data = (uint32_t) pI2cCommand->cmdData.write.data;
+
+    switch (pI2cCommand->cmdId) {
+        case gFlashDataWrite_c:
+            state = cortex_int_get_and_disable();
+            status = ProgramPage(address, length, (uint32_t *) data);
+            cortex_int_restore(state);
+        
+            if (0 != status) {
+                i2c_clearBuffer();
+                pI2cCommand->cmdId = gFlashError_c;
+                i2c_fillBuffer((uint8_t*) pI2cCommand, 0, 1);
+            }
+            else {
+                i2c_fillBuffer((uint8_t*) address, sizeof(i2cFlashCmd_t) - 1024, length);
+            }
+        break;
+        case gFlashDataRead_c: {
+            i2c_fillBuffer((uint8_t*) address, sizeof(i2cFlashCmd_t) - 1024, length);
+        }
+        break;
+        case gFlashDataErase_c: {
+            state = cortex_int_get_and_disable();
+            status = EraseSector(address);
+            cortex_int_restore(state);
+            
+            if (status != 0) {
+                i2c_clearBuffer();
+                pI2cCommand->cmdId = gFlashError_c;
+                i2c_fillBuffer((uint8_t*) pI2cCommand, 0, 1);
+            }
+        }
+        break;
+        case gFlashCfgFileName_c:
+            memcpy(gflashConfig.fileName, pI2cCommand->cmdData.data, 11);
+        break;
+        case gFlashCfgFileSize_c:
+            gflashConfig.fileSize = pI2cCommand->cmdData.data[0];
+        break;
+        case gFlashCfgFileVisible_c:
+            gflashConfig.fileVisible = pI2cCommand->cmdData.data[0];
+        break;
+        case gFlashStorageSize_c:
+            i2c_clearBuffer();
+            pI2cCommand->cmdId = gFlashStorageSize_c;
+            pI2cCommand->cmdData.data[0] = 128;
+            i2c_fillBuffer((uint8_t*) pI2cCommand, 0, 2);
+        break;
+        case gFlashSectorSize_c:
+            i2c_clearBuffer();
+            pI2cCommand->cmdId = gFlashSectorSize_c;
+            pI2cCommand->cmdData.data[0] = 0x04;
+            pI2cCommand->cmdData.data[1] = 0x00;
+            i2c_fillBuffer((uint8_t*) pI2cCommand, 0, 3);
+        break;
+        case gFlashStatus_c:
+        break;
+        case gFlashRemountMSD_c:
+            do_remount = true;
+        break;
+        default:
+            i2c_clearBuffer();
+            pI2cCommand->cmdId = gFlashError_c;
+            i2c_fillBuffer((uint8_t*) pI2cCommand, 0, 1);
+        break;
+    }
+    
+    // Response ready, assert COMBINED_SENSOR_INT
+    PORT_SetPinMux(COMBINED_SENSOR_INT_PORT, COMBINED_SENSOR_INT_PIN, kPORT_MuxAsGpio);
+}
+
+static void i2c_read_flash_callback(uint8_t* pData, uint8_t size) {
+    i2cCommand_t* pI2cCommand = (i2cCommand_t*) pData;
+
+    switch (pI2cCommand->cmdId) {
+        case gWriteResponse_c:
+        break;
+    }
+    
+    i2c_clearBuffer();
+    
+    // Release COMBINED_SENSOR_INT
+    PORT_SetPinMux(COMBINED_SENSOR_INT_PORT, COMBINED_SENSOR_INT_PIN, kPORT_PinDisabledOrAnalog);
+}
