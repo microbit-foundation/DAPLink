@@ -54,6 +54,8 @@
 #define PWR_LED_ON_BATT_BRIGHTNESS      40 // LED Brightness while being powered by battery
 #define PWR_LED_FADEOUT_MIN_BRIGHTNESS  30 // Minimum LED brightness when fading out
 
+#define FLASH_STORAGE_ADDRESS       (0x00020400)
+
 const char * const board_id_mb_2_0 = "9903";
 const char * const board_id_mb_2_1 = "9904";
 
@@ -100,7 +102,7 @@ static bool do_remount = false;
 flashConfig_t gflashConfig = {
     .fileName = "DATA    BIN",
     .fileSize = 126 * 1024,
-    .fileVisible = true,
+    .fileVisible = false,
 };
 
 // Board Rev ID detection. Reads BRD_REV_ID voltage
@@ -420,7 +422,7 @@ void vfs_user_build_filesystem_hook() {
 // File callback to be used with vfs_add_file to return file contents
 static uint32_t read_file_data_txt(uint32_t sector_offset, uint8_t *data, uint32_t num_sectors)
 {
-    memcpy(data, (uint8_t *) (0x00020400 + VFS_SECTOR_SIZE * sector_offset), VFS_SECTOR_SIZE);
+    memcpy(data, (uint8_t *) (FLASH_STORAGE_ADDRESS + VFS_SECTOR_SIZE * sector_offset), VFS_SECTOR_SIZE);
 
     return VFS_SECTOR_SIZE;
 }
@@ -603,6 +605,7 @@ static void i2c_write_flash_callback(uint8_t* pData, uint8_t size) {
     uint32_t address = pI2cCommand->cmdData.write.addr2 << 16 |
                             pI2cCommand->cmdData.write.addr1 << 8 |
                             pI2cCommand->cmdData.write.addr0 << 0;
+    address = address + FLASH_STORAGE_ADDRESS;
     uint32_t length = __REV(pI2cCommand->cmdData.write.length);
     uint32_t data = (uint32_t) pI2cCommand->cmdData.write.data;
 
