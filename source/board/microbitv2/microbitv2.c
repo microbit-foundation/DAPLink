@@ -70,6 +70,7 @@ typedef enum main_shutdown_state {
     MAIN_SHUTDOWN_WAITING = 0,
     MAIN_SHUTDOWN_PENDING,
     MAIN_SHUTDOWN_REACHED,
+    MAIN_SHUTDOWN_REACHED_FADE,
     MAIN_SHUTDOWN_REQUESTED,
     MAIN_LED_BLINK,
     MAIN_LED_FULL_BRIGHTNESS,
@@ -85,8 +86,11 @@ static void i2c_read_callback(uint8_t* pData, uint8_t size);
 static main_shutdown_state_t main_shutdown_state = MAIN_SHUTDOWN_WAITING;
 static uint8_t shutdown_led_dc = 100;
 static uint8_t power_led_max_duty_cycle = 100;
+static uint8_t initial_fade_brightness = 80;
 static app_power_mode_t interface_power_mode = kAPP_PowerModeVlls0;
 static power_source_t power_source;
+// reset button state count
+static uint16_t gpio_reset_count = 0;
 
 // Board Rev ID detection. Reads BRD_REV_ID voltage
 // Depends on gpio_init() to have been executed already
@@ -216,8 +220,6 @@ void handle_reset_button()
 {
     // button state
     static uint8_t reset_pressed = 0;
-    // reset button state count
-    static uint16_t gpio_reset_count = 0;
 
     // handle reset button without eventing
     if (!reset_pressed && gpio_get_reset_btn_fwrd()) {
@@ -239,24 +241,32 @@ void handle_reset_button()
         if (gpio_reset_count <= RESET_SHORT_PRESS) {
             main_shutdown_state = MAIN_LED_BLINK;
         }
-        else if (gpio_reset_count < RESET_LONG_PRESS) {
+        else if (gpio_reset_count < RESET_MID_PRESS) {
             // Indicate button has been released to stop to cancel the shutdown
             main_shutdown_state = MAIN_LED_BLINK;
         }
-        else if (gpio_reset_count >= RESET_LONG_PRESS) {
+        else if (gpio_reset_count >= RESET_MID_PRESS) {
             // Indicate the button has been released when shutdown is requested
             interface_power_mode = kAPP_PowerModeVlls0;
             main_shutdown_state = MAIN_SHUTDOWN_REQUESTED;
         }
     } else if (reset_pressed && gpio_get_reset_btn_fwrd()) {
         // Reset button is still pressed
-        if (gpio_reset_count > RESET_SHORT_PRESS && gpio_reset_count < RESET_LONG_PRESS) {
+        if (gpio_reset_count <= RESET_SHORT_PRESS) {
             // Enter the shutdown pending state to begin LED dimming
             main_shutdown_state = MAIN_SHUTDOWN_PENDING;
         }
-        else if (gpio_reset_count >= RESET_LONG_PRESS) {
+        else if (gpio_reset_count < RESET_MID_PRESS) {
+            // Enter the shutdown pending state to begin LED dimming
+            main_shutdown_state = MAIN_SHUTDOWN_PENDING;
+        }
+        else if (gpio_reset_count < RESET_LONG_PRESS) {
             // Enter the shutdown reached state to blink LED
             main_shutdown_state = MAIN_SHUTDOWN_REACHED;
+        }
+        else if (gpio_reset_count >= RESET_LONG_PRESS) {
+            // Enter the shutdown reached state to blink LED
+            main_shutdown_state = MAIN_SHUTDOWN_REACHED_FADE;
         }
 
         // Avoid overflow, stop counting after longest event
@@ -283,8 +293,8 @@ void board_30ms_hook()
 
     switch (main_shutdown_state) {
       case MAIN_LED_FULL_BRIGHTNESS:
-          // Jump power LED to 80%? brightness
-          shutdown_led_dc = 80;
+          // Jump power LED to initial fade brightness
+          shutdown_led_dc = initial_fade_brightness;
           break;
       case MAIN_SHUTDOWN_CANCEL:
           main_shutdown_state = MAIN_SHUTDOWN_WAITING;
@@ -293,11 +303,13 @@ void board_30ms_hook()
           break;
       case MAIN_SHUTDOWN_PENDING:
           // Fade the PWM until the board is about to be shut down
-          if (shutdown_led_dc > PWR_LED_FADEOUT_MIN_BRIGHTNESS) {
-              shutdown_led_dc--;
-          }
+          shutdown_led_dc = initial_fade_brightness - gpio_reset_count * (initial_fade_brightness - PWR_LED_FADEOUT_MIN_BRIGHTNESS)/(RESET_MID_PRESS);
           break;
       case MAIN_SHUTDOWN_REACHED:
+          // Hold LED in min brightness
+          shutdown_led_dc = PWR_LED_FADEOUT_MIN_BRIGHTNESS;
+          break;
+      case MAIN_SHUTDOWN_REACHED_FADE:
           // Fast fade to off
           if (shutdown_led_dc > 0) {
               shutdown_led_dc--;
