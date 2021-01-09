@@ -25,7 +25,7 @@
 #include "fsl_clock.h"
 #include "fsl_port.h"
 #include "settings.h" // for config_get_overflow_detect
-#include "main.h"
+#include "main_interface.h"
 
 /* I2C source clock */
 #define I2C_SLAVE_BASEADDR I2C1

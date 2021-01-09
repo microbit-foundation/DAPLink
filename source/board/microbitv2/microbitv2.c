@@ -30,7 +30,7 @@
 #include "power.h"
 #include "rl_usb.h" 
 #include "pwr_mon.h"
-#include "main.h"
+#include "main_interface.h"
 #include "i2c.h"
 #include "i2c_commands.h"
 #include "adc.h"

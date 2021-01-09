@@ -27,7 +27,7 @@
 #include "fsl_port.h"
 #include "fsl_clock.h"
 
-#include "main.h"
+#include "main_interface.h"
 #include "power.h"
 #include "pwr_mon.h"
 #include "IO_Config.h"
