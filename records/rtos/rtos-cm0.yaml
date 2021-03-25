@@ -1,6 +1,6 @@
 common:
     macros:
-        - OS_TICK=10000
+        - OS_TICK_FREQ=100
         - __ARM_ARCH_6M__=1
 tool_specific:
     uvision:
