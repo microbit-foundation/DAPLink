@@ -1615,34 +1615,67 @@ void USBD_RTX_TaskInit(void)
 
 __weak \
 const U8 USBD_HID_ReportDescriptor[] = {
-    HID_UsagePageVendor(0x00),
-    HID_Usage(0x01),
-    HID_Collection(HID_Application),
-    HID_LogicalMin(0),                              /* value range: 0 - 0xFF */
-    HID_LogicalMaxS(0xFF),
-    HID_ReportSize(8),                              /* 8 bits */
-#if (USBD_HID_INREPORT_MAX_SZ > 255)
-    HID_ReportCountS(USBD_HID_INREPORT_MAX_SZ),
-#else
-    HID_ReportCount(USBD_HID_INREPORT_MAX_SZ),
-#endif
-    HID_Usage(0x01),
-    HID_Input(HID_Data | HID_Variable | HID_Absolute),
-#if (USBD_HID_OUTREPORT_MAX_SZ > 255)
-    HID_ReportCountS(USBD_HID_OUTREPORT_MAX_SZ),
-#else
-    HID_ReportCount(USBD_HID_OUTREPORT_MAX_SZ),
-#endif
-    HID_Usage(0x01),
-    HID_Output(HID_Data | HID_Variable | HID_Absolute),
-#if (USBD_HID_FEATREPORT_MAX_SZ > 255)
-    HID_ReportCountS(USBD_HID_FEATREPORT_MAX_SZ),
-#else
-    HID_ReportCount(USBD_HID_FEATREPORT_MAX_SZ),
-#endif
-    HID_Usage(0x01),
-    HID_Feature(HID_Data | HID_Variable | HID_Absolute),
-    HID_EndCollection,
+//     HID_UsagePageVendor(0x00),
+//     HID_Usage(0x01),
+//     HID_Collection(HID_Application),
+//     HID_LogicalMin(0),                              /* value range: 0 - 0xFF */
+//     HID_LogicalMaxS(0xFF),
+//     HID_ReportSize(8),                              /* 8 bits */
+// #if (USBD_HID_INREPORT_MAX_SZ > 255)
+//     HID_ReportCountS(USBD_HID_INREPORT_MAX_SZ),
+// #else
+//     HID_ReportCount(USBD_HID_INREPORT_MAX_SZ),
+// #endif
+//     HID_Usage(0x01),
+//     HID_Input(HID_Data | HID_Variable | HID_Absolute),
+// #if (USBD_HID_OUTREPORT_MAX_SZ > 255)
+//     HID_ReportCountS(USBD_HID_OUTREPORT_MAX_SZ),
+// #else
+//     HID_ReportCount(USBD_HID_OUTREPORT_MAX_SZ),
+// #endif
+//     HID_Usage(0x01),
+//     HID_Output(HID_Data | HID_Variable | HID_Absolute),
+// #if (USBD_HID_FEATREPORT_MAX_SZ > 255)
+//     HID_ReportCountS(USBD_HID_FEATREPORT_MAX_SZ),
+// #else
+//     HID_ReportCount(USBD_HID_FEATREPORT_MAX_SZ),
+// #endif
+//     HID_Usage(0x01),
+//     HID_Feature(HID_Data | HID_Variable | HID_Absolute),
+//     HID_EndCollection,
+0x05U, 0x01U, /* Usage Page (Generic Desktop)*/
+0x09U, 0x02U, /* Usage (Mouse) */
+0xA1U, 0x01U, /* Collection (Application) */
+0x09U, 0x01U, /* Usage (Pointer) */
+
+0xA1U, 0x00U, /* Collection (Physical) */
+0x05U, 0x09U, /* Usage Page (Buttons) */
+0x19U, 0x01U, /* Usage Minimum (01U) */
+0x29U, 0x03U, /* Usage Maximum (03U) */
+
+0x15U, 0x00U, /* Logical Minimum (0U) */
+0x25U, 0x01U, /* Logical Maximum (1U) */
+0x95U, 0x03U, /* Report Count (3U) */
+0x75U, 0x01U, /* Report Size (1U) */
+
+0x81U, 0x02U, /* Input(Data, Variable, Absolute) 3U button bit fields */
+0x95U, 0x01U, /* Report Count (1U) */
+0x75U, 0x05U, /* Report Size (5U) */
+0x81U, 0x01U, /* Input (Constant), 5U constant field */
+
+0x05U, 0x01U, /* Usage Page (Generic Desktop) */
+0x09U, 0x30U, /* Usage (X) */
+0x09U, 0x31U, /* Usage (Y) */
+0x09U, 0x38U, /* Usage (Z) */
+
+0x15U, 0x81U, /* Logical Minimum (-127) */
+0x25U, 0x7FU, /* Logical Maximum (127) */
+0x75U, 0x08U, /* Report Size (8U) */
+0x95U, 0x03U, /* Report Count (3U) */
+
+0x81U, 0x06U, /* Input(Data, Variable, Relative), Three position bytes (X & Y & Z)*/
+0xC0U,        /* End collection, Close Pointer collection*/
+0xC0U         /* End collection, Close Mouse collection */
 };
 
 __weak \
@@ -1870,9 +1903,9 @@ const U8 USBD_BinaryObjectStoreDescriptor[] = { 0 };
   0x00,                                 /* bAlternateSetting */                                             \
   0x00+(USBD_HID_EP_INTIN != 0)+(USBD_HID_EP_INTOUT != 0), /*0x01+(USBD_HID_EP_INTOUT != 0),*/       /* bNumEndpoints */                                                 \
   USB_DEVICE_CLASS_HUMAN_INTERFACE,     /* bInterfaceClass */                                               \
-  HID_SUBCLASS_NONE,                    /* bInterfaceSubClass */                                            \
-  HID_PROTOCOL_NONE,                    /* bInterfaceProtocol */                                            \
-  USBD_HID_IF_STR_NUM,                  /* iInterface */                                                    \
+  HID_SUBCLASS_BOOT,                    /* bInterfaceSubClass */                                            \
+  HID_PROTOCOL_MOUSE,                   /* bInterfaceProtocol */                                            \
+  0x00U,                                /* iInterface */                                                    \
                                                                                                             \
 /* HID Class Descriptor */                                                                                  \
   USB_HID_DESC_SIZE,                    /* bLength */                                                       \

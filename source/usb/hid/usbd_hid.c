@@ -346,6 +346,7 @@ void USBD_HID_Configure_Event(void)
     DataInReceLen             = 0;
     ptrDataFeat               = NULL;
     DataFeatReceLen           = 0;
+    usbd_hid_get_report_trigger(0, 0, 0);
 }
 
 

@@ -61,6 +61,69 @@ void usbd_hid_init(void)
     DAP_queue_init(&DAP_Cmd_queue);
 }
 
+/* Update mouse pointer location. Draw a rectangular rotation*/
+static int USB_DeviceHidMouseAction(U8 *buf)
+{
+    static int8_t x = 0U;
+    static int8_t y = 0U;
+    enum
+    {
+        RIGHT,
+        DOWN,
+        LEFT,
+        UP
+    };
+    static uint8_t dir = RIGHT;
+
+    switch (dir)
+    {
+        case RIGHT:
+            /* Move right. Increase X value. */
+            buf[1] = 1U;
+            buf[2] = 0U;
+            x++;
+            if (x > 99U)
+            {
+                dir++;
+            }
+            break;
+        case DOWN:
+            /* Move down. Increase Y value. */
+            buf[1] = 0U;
+            buf[2] = 1U;
+            y++;
+            if (y > 99U)
+            {
+                dir++;
+            }
+            break;
+        case LEFT:
+            /* Move left. Discrease X value. */
+            buf[1] = (uint8_t)(-1);
+            buf[2] = 0U;
+            x--;
+            if (x < 2U)
+            {
+                dir++;
+            }
+            break;
+        case UP:
+            /* Move up. Discrease Y value. */
+            buf[1] = 0U;
+            buf[2] = (uint8_t)(-1);
+            y--;
+            if (y < 2U)
+            {
+                dir = RIGHT;
+            }
+            break;
+        default:
+            break;
+    }
+    /* Send mouse report to the host */
+    return 4;
+}
+
 // USB HID Callback: when data needs to be prepared for the host
 int usbd_hid_get_report(U8 rtype, U8 rid, U8 *buf, U8 req)
 {
@@ -74,16 +137,17 @@ int usbd_hid_get_report(U8 rtype, U8 rid, U8 *buf, U8 req)
 
                 case USBD_HID_REQ_EP_CTRL:
                 case USBD_HID_REQ_EP_INT:
-                    if (DAP_queue_get_send_buf(&DAP_Cmd_queue, &sbuf, &slen)) {
-                        if (slen > USBD_HID_OUTREPORT_MAX_SZ){
-                            util_assert(0);
-                        }else {
-                            memcpy(buf, sbuf, slen);
-                            return (USBD_HID_OUTREPORT_MAX_SZ);
-                        }
-                    } else if (req == USBD_HID_REQ_EP_INT) {
-                        USB_ResponseIdle = 1;
-                    }
+                    // if (DAP_queue_get_send_buf(&DAP_Cmd_queue, &sbuf, &slen)) {
+                    //     if (slen > USBD_HID_OUTREPORT_MAX_SZ){
+                    //         util_assert(0);
+                    //     }else {
+                    //         memcpy(buf, sbuf, slen);
+                    //         return (USBD_HID_OUTREPORT_MAX_SZ);
+                    //     }
+                    // } else if (req == USBD_HID_REQ_EP_INT) {
+                    //     USB_ResponseIdle = 1;
+                    // }
+                    return USB_DeviceHidMouseAction(buf);
                     break;
             }
 
