@@ -707,3 +707,14 @@ projects:
         - *module_hic_nrf52820
         - records/family/all_family.yaml
         - records/usb/usb-bulk.yaml
+    nrf52833_dk_bl:
+        - *module_bl
+        - records/board/nrf52833_dk.yaml
+        - records/hic_hal/nrf52820.yaml
+        - records/board/nrf52820_bl.yaml
+    nrf52833_dk_if:
+        - *module_if
+        - *module_hic_nrf52820
+        - records/board/nrf52833_dk.yaml
+        - records/family/all_family.yaml
+        - records/usb/usb-bulk.yaml
