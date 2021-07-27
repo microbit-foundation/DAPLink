@@ -84,6 +84,7 @@ module:
     hic_nrf52820: &module_hic_nrf52820
         - records/rtos/rtos-cm4.yaml
         - records/hic_hal/nrf52820.yaml
+        - records/usb/usb-bulk.yaml
 
 projects:
     kl26z_bl:
@@ -186,6 +187,10 @@ projects:
     kl27z_microbit_if:
         - *module_if
         - *module_hic_kl27z
+        - records/board/microbitv2.yaml
+    nrf52820_microbit_if:
+        - *module_if
+        - *module_hic_nrf52820
         - records/board/microbitv2.yaml
     kl26z_nina_b1_if:
         - *module_if
@@ -706,7 +711,6 @@ projects:
         - *module_if
         - *module_hic_nrf52820
         - records/board/nrf52820_if.yaml
-        - records/usb/usb-bulk.yaml
     nrf52833_dk_bl:
         - *module_bl
         - records/hic_hal/nrf52820.yaml
@@ -717,4 +721,3 @@ projects:
         - *module_hic_nrf52820
         - records/board/nrf52820_if.yaml
         - records/board/nrf52833_dk.yaml
-        - records/usb/usb-bulk.yaml

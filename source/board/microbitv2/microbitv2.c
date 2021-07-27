@@ -18,23 +18,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "fsl_device_registers.h"
 #include "IO_Config.h"
 #include "DAP.h"
 #include "target_family.h"
 #include "target_board.h"
+#include "device.h"
 
 const char * const board_id_mb_2_0 = "9903";
+const char * const board_id_mb_2_0x = "9905";
 
 extern target_cfg_t target_device_nrf52_64;
 
 // Called in main_task() to init before USB and files are configured
 static void prerun_board_config(void) {
     target_device = target_device_nrf52_64;
+#if defined(INTERFACE_KL27Z)
     target_device.rt_board_id = board_id_mb_2_0;
+#elif defined(INTERFACE_NRF52820)
+    if (NRF_FICR->INFO.PART == 0x52833) {
+        target_device.rt_board_id = board_id_mb_2_0x; // nRF52833
+    } else {
+        target_device.rt_board_id = board_id_mb_2_0; // nRF52820
+    }
+#endif
 }
 
-// USB HID override function return 1 if the activity is trivial or response is null 
+// USB HID override function return 1 if the activity is trivial or response is null
 uint8_t usbd_hid_no_activity(uint8_t *buf)
 {
     if(buf[0] == ID_DAP_Vendor3 &&  buf[1] == 0)
