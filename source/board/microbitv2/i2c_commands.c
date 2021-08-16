@@ -73,6 +73,8 @@ static void i2c_write_flash_callback(uint8_t* pData, uint8_t size);
 static void i2c_read_flash_callback(uint8_t* pData, uint8_t size);
 
 static void i2c_slave_callback(I2C_Type *base, i2c_slave_transfer_t *xfer, void *userData) {
+    i2cCommand_t i2cResponse = {0};
+    
     switch (xfer->event)
     {
         /*  Address match event */
@@ -101,6 +103,13 @@ static void i2c_slave_callback(I2C_Type *base, i2c_slave_transfer_t *xfer, void 
             xfer->data     = g_slave_RX_buff;
             xfer->dataSize = I2C_DATA_LENGTH;
             g_SlaveRxFlag = true;
+            
+            // Clear transmit Buffer in IRQ. It will be filled when the task attends the I2C event
+            i2c_clearBuffer();
+            // Add busy error code
+            i2cResponse.cmdId = gErrorResponse_c;
+            i2cResponse.cmdData.errorRspCmd.errorCode = gErrorBusy_c;
+            i2c_fillBuffer((uint8_t*) &i2cResponse, 0, sizeof(i2cResponse));
             break;
 
         /*  Transfer done */
@@ -276,7 +285,7 @@ static void i2c_write_comms_callback(uint8_t* pData, uint8_t size) {
                     memcpy(&i2cResponse.cmdData.readRspCmd.data, &board_id_hex, sizeof(board_id_hex));
                 break;
                 case gI2CProtocolVersion_c: {
-                    uint16_t i2c_version = 1;
+                    uint16_t i2c_version = 2;
                     i2cResponse.cmdData.readRspCmd.dataSize = sizeof(i2c_version);
                     memcpy(&i2cResponse.cmdData.readRspCmd.data, &i2c_version, sizeof(i2c_version));
                 }

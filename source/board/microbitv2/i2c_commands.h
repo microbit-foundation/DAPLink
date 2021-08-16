@@ -77,7 +77,8 @@ typedef enum errorCode_tag {
     gErrorWrongPropertySize_c   = 0x35,
     gErrorReadDisallowed_c      = 0x36,
     gErrorWriteDisallowed_c     = 0x37,
-    gErrorWriteFail_c           = 0x38
+    gErrorWriteFail_c           = 0x38,
+    gErrorBusy_c                = 0x39
 } errorCode_t;
 
 typedef __PACKED_STRUCT readReqCmd_tag {
