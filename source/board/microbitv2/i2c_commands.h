@@ -124,6 +124,8 @@ typedef __PACKED_STRUCT flashConfig_tag {
     vfs_filename_t  fileName;
     uint32_t        fileSize;
     bool            fileVisible;
+    uint32_t        fileEncWindowStart;
+    uint32_t        fileEncWindowEnd;
 } flashConfig_t;
 
 /*! Flash interface command type */
@@ -136,6 +138,7 @@ typedef enum flashCmdId_tag {
     gFlashStorageSize_c     = 0x06,
     gFlashSectorSize_c      = 0x07,
     gFlashRemountMSD_c      = 0x08,
+    gFlashCfgEncWindow_c    = 0x09,
     gFlashDataRead_c        = 0x0A,
     gFlashDataWrite_c       = 0x0B,
     gFlashDataErase_c       = 0x0C,
