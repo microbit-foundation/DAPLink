@@ -104,12 +104,6 @@ static void i2c_slave_callback(I2C_Type *base, i2c_slave_transfer_t *xfer, void 
             xfer->dataSize = I2C_DATA_LENGTH;
             g_SlaveRxFlag = true;
             
-            // Clear transmit Buffer in IRQ. It will be filled when the task attends the I2C event
-            i2c_clearBuffer();
-            // Add busy error code
-            i2cResponse.cmdId = gErrorResponse_c;
-            i2cResponse.cmdData.errorRspCmd.errorCode = gErrorBusy_c;
-            i2c_fillBuffer((uint8_t*) &i2cResponse, 0, sizeof(i2cResponse));
             break;
 
         /*  Transfer done */
@@ -124,6 +118,12 @@ static void i2c_slave_callback(I2C_Type *base, i2c_slave_transfer_t *xfer, void 
             
             // Ignore NOP cmd in I2C Write
             if (!(g_SlaveRxFlag && g_slave_RX_buff[0] == 0x00)) {
+                // Clear transmit Buffer in IRQ. It will be filled when the task attends the I2C event
+                i2c_clearBuffer();
+                // Add busy error code
+                i2cResponse.cmdId = gErrorResponse_c;
+                i2cResponse.cmdData.errorRspCmd.errorCode = gErrorBusy_c;
+                i2c_fillBuffer((uint8_t*) &i2cResponse, 0, sizeof(i2cResponse));
                 main_board_event();
             }
         
