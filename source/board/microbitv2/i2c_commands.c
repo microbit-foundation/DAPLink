@@ -106,12 +106,14 @@ static void i2c_slave_callback(I2C_Type *base, i2c_slave_transfer_t *xfer, void 
         /*  Receive request */
         case kI2C_SlaveReceiveEvent:
             /*  Update information for received process */
+            // We don't need to clear g_slave_RX_buff because we also have the 
+            // transferredCount to know what data is valid
+            xfer->data     = g_slave_RX_buff;
+            xfer->dataSize = I2C_DATA_LENGTH;
+            
             // Hack: Default driver can't differentiate between RX or TX on
             // completion event, so we set a flag here. Can't process more
             // than I2C_DATA_LENGTH bytes on RX
-            memset(&g_slave_RX_buff, 0, sizeof(g_slave_RX_buff));
-            xfer->data     = g_slave_RX_buff;
-            xfer->dataSize = I2C_DATA_LENGTH;
             g_SlaveRxFlag = true;
             
             break;
@@ -140,7 +142,6 @@ static void i2c_slave_callback(I2C_Type *base, i2c_slave_transfer_t *xfer, void 
             // It will be ready when the task attends the I2C event
             if(g_SlaveRxFlag) {
                 g_slave_TX_buff_ready = 0;
-                i2c_clearBuffer();
             }
         
             i2c_allow_sleep = false;
@@ -155,6 +156,7 @@ static void i2c_slave_callback(I2C_Type *base, i2c_slave_transfer_t *xfer, void 
 void board_custom_event() {
     
     if (g_SlaveRxFlag) {
+        i2c_clearBuffer();
         if (pfWriteCommsCallback && address_match == I2C_SLAVE_NRF_KL_COMMS) {
             pfWriteCommsCallback(&g_slave_RX_buff[0], transferredCount);
         }
