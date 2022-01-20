@@ -210,6 +210,7 @@ static void power_mode_switch(smc_power_state_t curPowerState, app_power_mode_t 
 
 static void power_pre_switch_hook(smc_power_state_t originPowerState, app_power_mode_t targetMode)
 {
+    // TODO: Check if this is necessary. 
     /* Wait for debug console output finished. */
     while (!(LPUART_STAT_TC_MASK & UART->STAT))
     {
@@ -255,6 +256,7 @@ static void power_post_switch_hook(smc_power_state_t originPowerState, app_power
     PORT_SetPinMux(UART_PORT, PIN_UART_TX_BIT, (port_mux_t)PIN_UART_TX_MUX_ALT);
 
     uart_initialize();
+    // TODO: Check if this is necessary. 
     i2c_deinitialize();
     i2c_initialize();
 }
