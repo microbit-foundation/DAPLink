@@ -48,6 +48,16 @@
 #include "flash_intf.h"
 #endif
 
+// Set to 1 to enable debugging
+#define DEBUG_UBIT       1
+
+#if DEBUG_UBIT
+#include "daplink_debug.h"
+#define debug_printf        debug_msg
+#else
+#define debug_printf(...)
+#endif
+
 // Declared in intelhex.c
 uint16_t board_id_hex_default = BOARD_VERSION_2_DEF;
 uint16_t board_id_hex = BOARD_VERSION_2_DEF;
@@ -173,6 +183,18 @@ void handle_reset_button()
             main_shutdown_state = MAIN_LED_FULL_BRIGHTNESS;
         } else if (reset_pressed && !gpio_get_reset_btn_fwrd()) {
             // Reset button released
+            debug_printf("\nnRF%x\n", *(volatile uint32_t *)0x10000100);
+            char variant[5];
+            //memcpy(variant, (void *)0x10000104, 4);
+            variant[0] = *(char *)0x10000107;
+            variant[1] = *(char *)0x10000106;
+            variant[2] = *(char *)0x10000105;
+            variant[3] = *(char *)0x10000104;
+            variant[4] = '\0';
+            debug_printf("Variant 0x%s\n", variant);
+            debug_printf("RAM %dKBs\n", *(volatile uint32_t *)0x1000010C);
+            debug_printf("Flash %dKBs\n", *(volatile uint32_t *)0x10000110);
+
             target_set_state(RESET_RUN);
             reset_pressed = 0;
             power_led_sleep_state_on = PWR_LED_SLEEP_STATE_DEFAULT;
