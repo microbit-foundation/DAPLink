@@ -40,6 +40,10 @@
 #include "target_family.h"
 #include "target_board.h"
 
+#include "pwm.h"
+#include "gpio_extra.h"
+#include "flash_intf.h"
+
 #ifdef DRAG_N_DROP_SUPPORT
 #include "vfs_manager.h"
 #include "flash_intf.h"
@@ -557,6 +561,30 @@ int main(void)
 #endif
     // initialize vendor sdk
     sdk_init();
+
+    // Additional init needed to erase target and toggle LEDs before the RTOS launches
+    pwm_init();
+    pwm_init_pins();
+    gpio_init();
+    gpio_enable_hid_led();
+
+    DAP_Setup();
+    init_family();
+
+    // Erase the target
+    flash_intf_target->init();
+    flash_intf_target->erase_chip();
+    flash_intf_target->uninit();
+
+    // Infinite loop toggling the red & orange LEDs to show it is running
+    for (;;) {
+        gpio_set_msc_led(GPIO_LED_OFF);
+        pwm_set_dutycycle(255);
+        for (volatile int i = 0; i < 4000000; i++);
+        gpio_set_msc_led(GPIO_LED_ON);
+        pwm_set_dutycycle(0);
+        for (volatile int i = 0; i < 4000000; i++);
+    }
 
     // Initialize CMSIS-RTOS
     osKernelInitialize();
