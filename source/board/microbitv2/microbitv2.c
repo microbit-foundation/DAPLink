@@ -425,6 +425,9 @@ void vfs_user_build_filesystem_hook() {
     error_t status;
     error_t error = vfs_mngr_get_transfer_status();
 
+    // TODO: Temporarily ignore timeout errors for testing
+    if (error == ERROR_TRANSFER_TIMEOUT) return;
+
     // Microbit error codes for DAPLink in the 500-599 range
     uint16_t microbit_error = error + 500;
 
