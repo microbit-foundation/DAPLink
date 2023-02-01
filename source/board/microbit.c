@@ -28,9 +28,18 @@ const char * const board_id_mb_1_3 = "9900";
 const char * const board_id_mb_1_5 = "9901";
 
 typedef enum {
-    BOARD_VERSION_1_3 = 0,
-    BOARD_VERSION_1_5 = 1,
+    BOARD_VERSION_1_3 = 0x9900,
+    BOARD_VERSION_1_5 = 0x9901,
 } mb_version_t;
+
+// These variables are declared and used in intelhex.c
+// The Universal Hex spec indicates the "data type" for micro:bit V1 should be
+// 0x9900, however some editors are shipping hex files with "data type" 0x9901
+// As intelhex.c uses a "default ID" and "this board ID" entry, we can cover
+// both IDs by setting these two variables to both values, but we won't be
+// able to properly support a third micro:bit V1 board ID
+uint16_t board_id_hex_default = BOARD_VERSION_1_3;
+uint16_t board_id_hex = BOARD_VERSION_1_5;
 
 // Enables Board Type Pin, reads it and disables it
 // Depends on gpio_init() to have been executed already
@@ -40,6 +49,7 @@ static uint8_t read_board_type_pin(void) {
     PIN_BOARD_TYPE_PORT->PCR[PIN_BOARD_TYPE_BIT] = PORT_PCR_MUX(1) | PORT_PCR_PE(1) | PORT_PCR_PS(0);
     PIN_BOARD_TYPE_GPIO->PDDR &= ~PIN_BOARD_TYPE;
     // Wait to stabilise, based on gpio.c busy_wait(), at -O2 10000 iterations delay ~850us
+    // TODO: Update this with a timer instead of a busy loop
     for (volatile uint32_t i = 10000; i > 0; i--);
     // Read pin
     pin_state = (PIN_BOARD_TYPE_GPIO->PDIR & PIN_BOARD_TYPE);
@@ -64,9 +74,8 @@ static void set_board_id(mb_version_t board_version) {
 
 // Called in main_task() to init before USB and files are configured
 static void prerun_board_config(void) {
-    // With only two boards the digital pin read maps directly to the type
-    mb_version_t board_version = (mb_version_t)read_board_type_pin();
-    set_board_id(board_version);
+    uint8_t pin_state = read_board_type_pin();
+    set_board_id(pin_state ? BOARD_VERSION_1_5 : BOARD_VERSION_1_3);
 }
 
 // USB HID override function return 1 if the activity is trivial or response is null
